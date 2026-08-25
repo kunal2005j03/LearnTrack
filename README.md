@@ -1,11 +1,10 @@
-<div align="center">
+# LearnTrack
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+LearnTrack is a web application with a separate code execution microservice.
 
-  <h1>Built with AI Studio</h2>
+## Deployment
 
-  <p>The fastest path from prompt to production with Gemini.</p>
-
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+1. The main LearnTrack app is separate from the execution service.
+2. `execution-sandbox/` is deployed separately to Cloud Run.
+3. The resulting Cloud Run URL becomes:
+   `EXECUTION_SERVICE_URL`

@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg: #050505;
+    --surface-low: #0B0B0D;
+    --surface-mid: #111113;
+    --surface-high: #1A1A1D;
+    --ink: #FFFFFF;
+    --ink-dim: #A1A1AA;
+    --ink-faint: #636366;
+    --accent: #A78BFA;
+    --accent-glow: rgba(167, 139, 250, 0.15);
+    --border: rgba(255, 255, 255, 0.08);
+    --glass: rgba(255, 255, 255, 0.03);
+    --sidebar-w: 240px;
+  }
+
+  .light, .light-theme, html.light {
+    --bg: #F5F5F7;
+    --surface-low: #FFFFFF;
+    --surface-mid: #FBFBFD;
+    --surface-high: #F2F2F7;
+    --ink: #000000;
+    --ink-dim: #48484A;
+    --ink-faint: #8E8E93;
+    --accent: #8B5CF6;
+    --accent-glow: rgba(139, 92, 246, 0.1);
+    --border: rgba(0, 0, 0, 0.08);
+    --glass: rgba(0, 0, 0, 0.02);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Ambient glow */
+.ambient-glow {
+  position: fixed;
+  top: 20%;
+  right: 10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  z-index: 0;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
+}
+
+/* =========================================================
+   ChatGPT & Modern IDE Code Editor Syntax Highlighting Theme
+   ========================================================= */
+.code-syntax-theme,
+pre.code-syntax-theme,
+code.code-syntax-theme {
+  color: #e6edf3 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+
+/* Base Prose Override so Tailwind Typography doesn't override code syntax colors */
+.prose pre .code-syntax-theme,
+.prose .code-syntax-theme {
+  color: #e6edf3 !important;
+  background-color: transparent !important;
+}
+
+.code-syntax-theme .token.comment,
+.code-syntax-theme .token.prolog,
+.code-syntax-theme .token.doctype,
+.code-syntax-theme .token.cdata,
+.code-syntax-theme .token.docstring {
+  color: #8b949e !important;
+  font-style: italic !important;
+}
+
+.code-syntax-theme .token.punctuation,
+.code-syntax-theme .token.bracket {
+  color: #c9d1d9 !important;
+}
+
+/* Keywords: def, return, const, import, from, class, for, in, if, etc. */
+.code-syntax-theme .token.keyword,
+.code-syntax-theme .token.tag,
+.code-syntax-theme .token.selector,
+.code-syntax-theme .token.important,
+.code-syntax-theme .token.atrule,
+.code-syntax-theme .token.rule {
+  color: #f472b6 !important; /* Vibrant soft magenta/pink as in ChatGPT */
+  font-weight: 600 !important;
+}
+
+/* Functions & Methods */
+.code-syntax-theme .token.function,
+.code-syntax-theme .token.class-name,
+.code-syntax-theme .token.function-name,
+.code-syntax-theme .token.method {
+  color: #60a5fa !important; /* Vibrant sky blue */
+  font-weight: 500 !important;
+}
+
+/* Strings & Characters */
+.code-syntax-theme .token.string,
+.code-syntax-theme .token.char,
+.code-syntax-theme .token.attr-value,
+.code-syntax-theme .token.regex,
+.code-syntax-theme .token.triple-quoted-string {
+  color: #7ee787 !important; /* Vibrant light emerald green */
+}
+
+/* Numbers & Booleans */
+.code-syntax-theme .token.number,
+.code-syntax-theme .token.boolean,
+.code-syntax-theme .token.constant {
+  color: #fb923c !important; /* Warm orange */
+  font-weight: 500 !important;
+}
+
+/* Operators */
+.code-syntax-theme .token.operator,
+.code-syntax-theme .token.entity,
+.code-syntax-theme .token.url {
+  color: #38bdf8 !important; /* Vibrant electric cyan */
+}
+
+/* Variables, Properties, JSX Attributes, Parameters */
+.code-syntax-theme .token.variable,
+.code-syntax-theme .token.property,
+.code-syntax-theme .token.attr-name,
+.code-syntax-theme .token.parameter {
+  color: #fbbf24 !important; /* Warm amber / yellow */
+}
+
+/* Builtins, Types */
+.code-syntax-theme .token.builtin,
+.code-syntax-theme .token.type,
+.code-syntax-theme .token.class {
+  color: #38bdf8 !important; /* Cyan / Blue */
+}
+
+/* HTML/JSX Tags */
+.code-syntax-theme .token.tag .token.punctuation {
+  color: #7dd3fc !important;
+}
+.code-syntax-theme .token.tag .token.tag-id,
+.code-syntax-theme .token.tag-name {
+  color: #7dd3fc !important; /* Light blue tag names like <div, <button */
+}
+
+

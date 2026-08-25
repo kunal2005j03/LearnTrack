@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "fields": {
+        "uid": { "type": "string", "description": "User UID" },
+        "displayName": { "type": "string", "description": "Display name" },
+        "email": { "type": "string", "description": "Email address" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      }
+    },
+    "Course": {
+      "collection": "users/{userId}/courses",
+      "fields": {
+        "id": { "type": "string", "description": "Course/Playlist ID" },
+        "playlistId": { "type": "string", "description": "YouTube Playlist ID" },
+        "title": { "type": "string", "description": "Course title" },
+        "description": { "type": "string", "description": "Course description" },
+        "channelTitle": { "type": "string", "description": "Channel name" },
+        "thumbnail": { "type": "string", "description": "Course thumbnail URL" },
+        "totalVideos": { "type": "number", "description": "Total videos count" },
+        "completedVideos": { "type": "number", "description": "Completed videos count" },
+        "percentage": { "type": "number", "description": "Completion percentage" },
+        "isBookmarked": { "type": "boolean", "description": "Bookmarked flag" }
+      }
+    },
+    "VideoProgress": {
+      "collection": "users/{userId}/progress",
+      "fields": {
+        "userId": { "type": "string", "description": "User UID" },
+        "courseId": { "type": "string", "description": "Associated course ID" },
+        "videoId": { "type": "string", "description": "YouTube Video ID" },
+        "watchedSeconds": { "type": "number", "description": "Playback position in seconds" },
+        "durationSeconds": { "type": "number", "description": "Total duration in seconds" },
+        "percentage": { "type": "number", "description": "Completion percentage" },
+        "completed": { "type": "boolean", "description": "Whether video is marked complete" },
+        "lastWatchedAt": { "type": "string", "description": "Last watch ISO timestamp" }
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "LearnTrack",
+  "description": "Personal productivity and learning platform for tracking progress through YouTube educational videos and playlists.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
