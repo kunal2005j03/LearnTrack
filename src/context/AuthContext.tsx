@@ -75,6 +75,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAuthError('Sign in window was closed before completing.');
       } else if (err.code === 'auth/popup-blocked') {
         setAuthError('Sign in popup was blocked by the browser. Please allow popups.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'current domain';
+        setAuthError(`Unauthorized domain (${currentHost}). Add '${currentHost}' to Authorized Domains in Firebase Console (Authentication > Settings > Authorized domains).`);
       } else {
         setAuthError(err.message || 'Failed to sign in with Google');
       }
