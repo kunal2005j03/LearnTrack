@@ -5,22 +5,160 @@ import {
   Copy,
   Bug,
   Loader2,
-  Code2,
   CheckCheck,
   X,
   Columns2,
   SquareCode,
   Maximize2,
   Trash2,
-  ArrowDownCircle,
   RotateCcw,
-  Eraser,
 } from 'lucide-react';
 import { CodeExecutionResult } from '../types';
 import { highlightCode } from '../utils/syntaxHighlight';
 
+// Language Logos precisely matching reference PNG assets
+// Python Logo (python.png: Blue & Yellow Interlocking Snakes)
+const PythonIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
+  <svg className={className} viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="pyBlueGrad" x1="10%" y1="10%" x2="90%" y2="90%">
+        <stop offset="0%" stopColor="#0273d4" />
+        <stop offset="100%" stopColor="#015299" />
+      </linearGradient>
+      <linearGradient id="pyYellowGrad" x1="10%" y1="10%" x2="90%" y2="90%">
+        <stop offset="0%" stopColor="#ffdc34" />
+        <stop offset="100%" stopColor="#e9a800" />
+      </linearGradient>
+    </defs>
+    {/* Upper Blue Snake */}
+    <path
+      d="M63.5 8C33.2 8 34.8 21.1 34.8 21.1L34.9 34.7H64.1V38.9H23.5C9.2 38.9 5 49.9 5 67.4C5 86.6 14.1 85.8 14.1 85.8H22.8V73.6C22.8 58.5 35.8 58.6 35.8 58.6H64.2C80.5 58.6 79.5 44.5 79.5 44.5V21.1C79.5 21.1 81.1 8 63.5 8ZM49.5 17.7C52.8 17.7 55.4 20.4 55.4 23.6C55.4 26.9 52.8 29.5 49.5 29.5C46.3 29.5 43.6 26.9 43.6 23.6C43.6 20.4 46.3 17.7 49.5 17.7Z"
+      fill="url(#pyBlueGrad)"
+    />
+    {/* Lower Yellow Snake */}
+    <path
+      d="M64.5 120C94.8 120 93.2 106.9 93.2 106.9L93.1 93.3H63.9V89.1H104.5C118.8 89.1 123 78.1 123 60.6C123 41.4 113.9 42.2 113.9 42.2H105.2V54.4C105.2 69.5 92.2 69.4 92.2 69.4H63.8C47.5 69.4 48.5 83.5 48.5 83.5V106.9C48.5 106.9 46.9 120 64.5 120ZM78.5 110.3C75.2 110.3 72.6 107.6 72.6 104.4C72.6 101.1 75.2 98.5 78.5 98.5C81.7 98.5 84.4 101.1 84.4 104.4C84.4 107.6 81.7 110.3 78.5 110.3Z"
+      fill="url(#pyYellowGrad)"
+    />
+  </svg>
+);
+
+// Golang Logo (golang.png: Cyan Speed Lines + Stylized 'GO')
+const GolangIcon: React.FC<{ className?: string }> = ({ className = 'w-6 h-4' }) => (
+  <svg className={className} viewBox="0 0 240 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* 3 Left Motion Speed Lines */}
+    <path d="M22 28.5H62.5L53.5 38.5H13L22 28.5Z" fill="#00ADD8" />
+    <path d="M2 45H57.5L48.5 55H-7L2 45Z" fill="#00ADD8" />
+    <path d="M28 61.5H52.5L43.5 71.5H19L28 61.5Z" fill="#00ADD8" />
+    {/* Stylized 'G' */}
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M136.5 12C160.8 12 169.5 28.5 169.5 44C169.5 47 169.2 49.5 168.8 51.5H112C113 65.5 122 75 137.5 75C148.5 75 156 70 160.5 62L178 72C169.5 85 155 92 135 92C101 92 84 69.5 84 46C84 25.5 101 12 136.5 12ZM146 36C145.5 29 139.5 24.5 132.5 24.5C124 24.5 116 30 114 36H146Z"
+      fill="#00ADD8"
+      className="hidden"
+    />
+    {/* Exact Smooth Curve for G & O in fast-go branding */}
+    <path
+      d="M134.4 20.8c11.5 0 21.8 4.6 28.3 12.3l-10.4 9.1c-4.4-5-10.8-7.7-17.7-7.7-14.8 0-25.2 11.2-25.2 26.5 0 15.6 10.3 26.7 25.4 26.7 8.3 0 14.7-3.7 18.9-9.7h-20.4v-12.8h34.6v34.4c-9.5 8.4-21.4 12.8-33.6 12.8-24.8 0-42.3-17.6-42.3-44.4 0-26.6 17.7-47.2 42.4-47.2z"
+      fill="#00ADD8"
+    />
+    <path
+      d="M197.8 20.8c25.4 0 42.2 19.8 42.2 44.4 0 25.2-16.9 44.4-42.2 44.4s-42.2-19.2-42.2-44.4c0-24.6 16.8-44.4 42.2-44.4zm0 69.9c14.6 0 24.2-12.3 24.2-25.5 0-12.8-9.6-25.5-24.2-25.5-14.7 0-24.3 12.7-24.3 25.5 0 13.2 9.6 25.5 24.3 25.5z"
+      fill="#00ADD8"
+    />
+  </svg>
+);
+
+// Java Logo (java.png: Classic Coffee Cup with Red Steam & Blue Saucer Swirls)
+const JavaIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
+  <svg className={className} viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Red Steam Ribbon 1 (Left & High) */}
+    <path
+      d="M62 4C58 14 43 23 48 35C52 45 66 51 56 65C53 69 49 71 47 71C46 71 48 68 50 65C57 55 46 47 43 38C38 23 54 13 62 4Z"
+      fill="#EA2027"
+    />
+    {/* Red Steam Ribbon 2 (Right) */}
+    <path
+      d="M72 15C69 22 59 29 63 38C66 45 74 49 69 58C67 61 64 63 63 63C62 63 64 61 65 59C70 52 64 47 61 41C57 30 68 22 72 15Z"
+      fill="#EA2027"
+    />
+    {/* Blue Cup Top Rim Swirl */}
+    <path
+      d="M21 72C21 72 37 66 61 66C82 66 94 72 94 72C94 72 84 76 61 76C36 76 21 72 21 72Z"
+      fill="#0073B7"
+    />
+    {/* Blue Cup Body Mid Swirl */}
+    <path
+      d="M28 80C28 80 42 75 62 75C80 75 88 80 88 80C88 80 78 84 60 84C40 84 28 80 28 80Z"
+      fill="#0073B7"
+    />
+    {/* Blue Cup Lower Curve */}
+    <path
+      d="M36 88C36 88 47 84 62 84C76 84 82 88 82 88C82 88 74 92 60 92C45 92 36 88 36 88Z"
+      fill="#0073B7"
+    />
+    {/* Blue Saucer Base Wave */}
+    <path
+      d="M10 102C10 102 32 94 62 94C92 94 104 102 104 102C104 102 85 109 60 109C30 109 10 102 10 102Z"
+      fill="#0073B7"
+    />
+    {/* Blue Handle Curve */}
+    <path
+      d="M87 72C95 72 102 78 98 90C95 99 87 103 87 103C87 103 94 97 94 90C94 83 89 77 84 75L87 72Z"
+      fill="#0073B7"
+    />
+  </svg>
+);
+
+// C++ Logo (cpp.png: Hexagonal Badge with White 'C' and Dark Blue Chevron with '++')
+const CppIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
+  <svg className={className} viewBox="0 0 120 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Outer Hexagon */}
+    <path
+      d="M60 4L114 34.5V95.5L60 126L6 95.5V34.5L60 4Z"
+      fill="#00599C"
+    />
+    {/* Left Shading Facet */}
+    <path
+      d="M60 4L6 34.5V95.5L60 126V4Z"
+      fill="#004482"
+    />
+    {/* Inner Hexagon Face */}
+    <path
+      d="M60 10L108 37.5V92.5L60 120L12 92.5V37.5L60 10Z"
+      fill="#0075C9"
+    />
+    <path
+      d="M60 10L12 37.5V92.5L60 120V10Z"
+      fill="#00599C"
+    />
+    {/* White Central 'C' */}
+    <path
+      d="M60 30C41 30 27 45 27 65C27 85 41 100 60 100C72 100 81 94 87 86L74 76C71 80 66 84 60 84C49 84 41 75 41 65C41 55 49 46 60 46C66 46 71 50 74 54L87 44C81 36 72 30 60 30Z"
+      fill="#FFFFFF"
+    />
+    {/* Dark Blue Chevron / Banner on the Right */}
+    <path
+      d="M48 65L82 34H114V96H82L48 65Z"
+      fill="#004482"
+    />
+    {/* First '+' inside chevron */}
+    <path
+      d="M69 59H75V53H81V59H87V65H81V71H75V65H69V59Z"
+      fill="#FFFFFF"
+    />
+    {/* Second '+' inside chevron */}
+    <path
+      d="M91 59H97V53H103V59H109V65H103V71H97V65H91V59Z"
+      fill="#FFFFFF"
+    />
+  </svg>
+);
+
 const DEFAULT_CODE_SNIPPETS: Record<string, string> = {
   python: 'print("Hello World!")',
+  py: 'print("Hello World!")',
   go: 'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Hello World!")\n}',
   golang: 'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Hello World!")\n}',
   java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World!");\n    }\n}',
@@ -46,6 +184,7 @@ interface InteractiveCodeTerminalProps {
   onAskAiToDebug?: (code: string, errorOutput: string) => void;
   onClose?: () => void;
   onCodeChange?: (code: string) => void;
+  onLanguageChange?: (language: string) => void;
   onClearCode?: () => void;
   isEmbedded?: boolean;
 }
@@ -58,23 +197,21 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
   onAskAiToDebug,
   onClose,
   onCodeChange,
+  onLanguageChange,
   onClearCode,
   isEmbedded = false,
 }) => {
   const terminalStorageKey = `learntrack_terminal_state_${courseId || courseTitle.replace(/\s+/g, '_')}`;
 
-  const [code, setCode] = useState<string>(() => {
+  const [userExplicitlySelectedLanguage, setUserExplicitlySelectedLanguage] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem(terminalStorageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.code !== undefined && parsed.code !== null) {
-          return parsed.code;
-        }
+        return !!parsed.userExplicitlySelectedLanguage;
       }
     } catch {}
-    if (initialCode !== undefined && initialCode !== null) return initialCode;
-    return DEFAULT_CODE_SNIPPETS[initialLanguage] || DEFAULT_CODE_SNIPPETS.python;
+    return false;
   });
 
   const [language, setLanguage] = useState<string>(() => {
@@ -82,32 +219,39 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
       const saved = localStorage.getItem(terminalStorageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.language) return parsed.language;
+        // Priority 1: User previously explicitly selected a language
+        if (parsed.userExplicitlySelectedLanguage && parsed.language) {
+          const l = parsed.language.toLowerCase();
+          if (l === 'python' || l === 'py' || l === 'go' || l === 'golang' || l === 'java' || l === 'cpp' || l === 'c++') {
+            return l;
+          }
+        }
       }
     } catch {}
-    return initialLanguage;
+    // Priority 2: Explicit initialLanguage prop if valid and non-default
+    if (initialLanguage && initialLanguage.toLowerCase() !== 'python') {
+      const l = initialLanguage.toLowerCase();
+      if (l === 'go' || l === 'golang' || l === 'java' || l === 'cpp' || l === 'c++') {
+        return l;
+      }
+    }
+    // Priority 3: Always default to python
+    return 'python';
   });
 
-  const [inputStdin, setInputStdin] = useState<string>(() => {
+  const [code, setCode] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(terminalStorageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.inputStdin !== undefined) return parsed.inputStdin;
+        if (parsed.code !== undefined && parsed.code !== null && parsed.code !== '') {
+          return parsed.code;
+        }
       }
     } catch {}
-    return '';
-  });
-
-  const [showStdin, setShowStdin] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(terminalStorageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.showStdin !== undefined) return parsed.showStdin;
-      }
-    } catch {}
-    return false;
+    if (initialCode !== undefined && initialCode !== null && initialCode !== '') return initialCode;
+    const targetLang = (initialLanguage || 'python').toLowerCase();
+    return DEFAULT_CODE_SNIPPETS[targetLang] || DEFAULT_CODE_SNIPPETS.python;
   });
 
   const [isRunning, setIsRunning] = useState(false);
@@ -153,9 +297,13 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
     }
   }, [initialCode]);
 
+  const lastInitialLanguageRef = useRef<string | undefined>(initialLanguage);
   useEffect(() => {
-    if (initialLanguage && initialLanguage !== language) {
-      setLanguage(initialLanguage);
+    if (initialLanguage && initialLanguage !== lastInitialLanguageRef.current) {
+      lastInitialLanguageRef.current = initialLanguage;
+      const norm = initialLanguage.toLowerCase();
+      setLanguage(norm);
+      setUserExplicitlySelectedLanguage(true);
     }
   }, [initialLanguage]);
 
@@ -166,10 +314,9 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
       const stateToSave = {
         code,
         language,
-        inputStdin,
-        showStdin,
         result,
         viewMode,
+        userExplicitlySelectedLanguage,
       };
       localStorage.setItem(terminalStorageKey, JSON.stringify(stateToSave));
       window.dispatchEvent(
@@ -180,7 +327,7 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
     } catch (e) {
       console.error('Failed to persist terminal state:', e);
     }
-  }, [code, language, inputStdin, showStdin, result, viewMode, terminalStorageKey]);
+  }, [code, language, result, viewMode, userExplicitlySelectedLanguage, terminalStorageKey]);
 
   // Real-time synchronization across instances (e.g. fullscreen HUD vs normal view)
   useEffect(() => {
@@ -190,10 +337,9 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
         const s = e.detail.state;
         if (s.code !== undefined && s.code !== code) setCode(s.code);
         if (s.language !== undefined && s.language !== language) setLanguage(s.language);
-        if (s.inputStdin !== undefined && s.inputStdin !== inputStdin) setInputStdin(s.inputStdin);
-        if (s.showStdin !== undefined && s.showStdin !== showStdin) setShowStdin(s.showStdin);
         if (s.result !== undefined) setResult(s.result);
         if (s.viewMode !== undefined && s.viewMode !== viewMode) setViewMode(s.viewMode);
+        if (s.userExplicitlySelectedLanguage !== undefined) setUserExplicitlySelectedLanguage(s.userExplicitlySelectedLanguage);
         setTimeout(() => {
           isUpdatingFromExternalRef.current = false;
         }, 50);
@@ -201,21 +347,28 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
     };
     window.addEventListener('learntrack_terminal_state_updated', handleSync);
     return () => window.removeEventListener('learntrack_terminal_state_updated', handleSync);
-  }, [terminalStorageKey, code, language, inputStdin, showStdin, viewMode]);
+  }, [terminalStorageKey, code, language, viewMode]);
 
   const handleLanguageSelect = (newLang: string) => {
     const normCurrent = (language || 'python').toLowerCase();
     const normNew = newLang.toLowerCase();
+    setUserExplicitlySelectedLanguage(true);
+    onLanguageChange?.(normNew);
     if (normCurrent === normNew) return;
 
-    setLanguage(newLang);
+    setLanguage(normNew);
+    setResult(null);
 
-    const isDefaultTemplate = Object.values(DEFAULT_CODE_SNIPPETS).some(
-      (tmpl) => tmpl.trim() === code.trim()
-    );
+    const isDefaultTemplate =
+      !code.trim() ||
+      Object.values(DEFAULT_CODE_SNIPPETS).some(
+        (tmpl) => tmpl.trim() === code.trim()
+      ) ||
+      code.trim() === 'print("Hello World!")' ||
+      code.trim().startsWith('print(');
 
     if (isDefaultTemplate) {
-      const nextSnippet = DEFAULT_CODE_SNIPPETS[newLang] || DEFAULT_CODE_SNIPPETS.python;
+      const nextSnippet = DEFAULT_CODE_SNIPPETS[normNew] || DEFAULT_CODE_SNIPPETS.python;
       setCode(nextSnippet);
       onCodeChange?.(nextSnippet);
     }
@@ -264,7 +417,7 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
       const resp = await fetch('/api/code/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, language, input: inputStdin }),
+        body: JSON.stringify({ code, language }),
       });
       const data = await resp.json();
       setResult(data);
@@ -311,159 +464,146 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
   const lineNumbers = Array.from({ length: Math.max(lineCount, 1) }, (_, i) => i + 1);
   const highlighted = highlightCode(code, language);
 
+  const isPython = language === 'python' || language === 'py';
+  const isGo = language === 'go' || language === 'golang';
+  const isJava = language === 'java';
+  const isCpp = language === 'cpp' || language === 'c++';
+
+  const getActiveFileIcon = () => {
+    if (isGo) return <GolangIcon className="w-[24px] h-4 shrink-0" />;
+    if (isJava) return <JavaIcon className="w-5 h-5 shrink-0" />;
+    if (isCpp) return <CppIcon className="w-5 h-5 shrink-0" />;
+    return <PythonIcon className="w-5 h-5 shrink-0" />;
+  };
+
   return (
     <div
-      className={`flex flex-col bg-[#171717] border border-white/15 rounded-2xl overflow-hidden shadow-2xl ${
+      className={`flex flex-col bg-[#0b0c0e] border border-white/10 rounded-2xl overflow-hidden shadow-2xl ${
         isEmbedded ? 'w-full h-full min-h-0' : 'h-full max-h-[680px]'
       }`}
     >
-      {/* Top Header Bar: Language, View Mode Tabs, STDIN, Copy & Run */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#202123] border-b border-white/10 shrink-0 overflow-x-auto no-scrollbar select-none">
-        {/* Left Side: Window dots & Language selector */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1.5 shrink-0 hidden xs:flex">
-            <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80 shadow-xs" />
-            <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80 shadow-xs" />
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 shadow-xs" />
-          </div>
-
-          <div className="flex items-center gap-1.5 pl-1.5 border-l border-white/10">
-            <Code2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="text-xs font-mono font-semibold text-zinc-200">
-              {FILE_NAMES[language] || 'main.py'}
-            </span>
-          </div>
-
-          {/* Language Switcher Pills: Python, Golang, Java, C++ */}
-          <div className="flex items-center bg-black/40 p-0.5 rounded-xl border border-white/10 text-xs font-mono shrink-0">
-            <button
-              type="button"
-              onClick={() => handleLanguageSelect('python')}
-              className={`px-2 py-0.5 rounded-lg transition cursor-pointer font-medium text-[11px] ${
-                language === 'python' || language === 'py'
-                  ? 'bg-cyan-500/20 text-cyan-300 font-bold shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Python
-            </button>
-            <button
-              type="button"
-              onClick={() => handleLanguageSelect('go')}
-              className={`px-2 py-0.5 rounded-lg transition cursor-pointer font-medium text-[11px] ${
-                language === 'go' || language === 'golang'
-                  ? 'bg-emerald-500/20 text-emerald-300 font-bold shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Golang
-            </button>
-            <button
-              type="button"
-              onClick={() => handleLanguageSelect('java')}
-              className={`px-2 py-0.5 rounded-lg transition cursor-pointer font-medium text-[11px] ${
-                language === 'java'
-                  ? 'bg-amber-500/20 text-amber-300 font-bold shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Java
-            </button>
-            <button
-              type="button"
-              onClick={() => handleLanguageSelect('cpp')}
-              className={`px-2 py-0.5 rounded-lg transition cursor-pointer font-medium text-[11px] ${
-                language === 'cpp' || language === 'c++'
-                  ? 'bg-indigo-500/20 text-indigo-300 font-bold shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              C++
-            </button>
-          </div>
+      {/* 1. Top Bar: Current File Tab + Language Selector Pills */}
+      <div className="flex items-center gap-2 p-2.5 bg-[#121316] border-b border-white/10 shrink-0 overflow-x-auto no-scrollbar select-none">
+        {/* Active File Name Indicator Pill */}
+        <div className="px-3.5 py-1.5 rounded-xl bg-zinc-900/90 border border-white/10 text-zinc-200 font-mono text-xs font-semibold flex items-center gap-2 shrink-0 shadow-xs">
+          {getActiveFileIcon()}
+          <span>{FILE_NAMES[language] || 'main.py'}</span>
         </div>
 
-        {/* View Mode Tabs: Split, Code Only, Output Only */}
-        <div className="flex items-center bg-black/40 p-0.5 rounded-xl border border-white/10 text-xs font-mono shrink-0">
+        {/* Language Selection Row: [ Python ] [ Golang ] [ Java ] [ C++ ] */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Python */}
+          <button
+            type="button"
+            onClick={() => handleLanguageSelect('python')}
+            className={`px-3.5 py-1.5 rounded-xl transition cursor-pointer text-xs font-semibold flex items-center gap-2 shrink-0 ${
+              isPython
+                ? 'bg-emerald-950/30 text-white border border-emerald-500/50 shadow-xs ring-1 ring-emerald-500/20'
+                : 'bg-zinc-900/60 text-zinc-300 hover:text-white border border-white/10 hover:bg-zinc-800/60'
+            }`}
+          >
+            <PythonIcon className="w-5 h-5 shrink-0" />
+            <span>Python</span>
+          </button>
+
+          {/* Golang */}
+          <button
+            type="button"
+            onClick={() => handleLanguageSelect('go')}
+            className={`px-3.5 py-1.5 rounded-xl transition cursor-pointer text-xs font-semibold flex items-center gap-2 shrink-0 ${
+              isGo
+                ? 'bg-cyan-950/30 text-white border border-cyan-500/50 shadow-xs ring-1 ring-cyan-500/20'
+                : 'bg-zinc-900/60 text-zinc-300 hover:text-white border border-white/10 hover:bg-zinc-800/60'
+            }`}
+          >
+            <GolangIcon className="w-[25px] h-[17px] shrink-0" />
+            <span>Golang</span>
+          </button>
+
+          {/* Java */}
+          <button
+            type="button"
+            onClick={() => handleLanguageSelect('java')}
+            className={`px-3.5 py-1.5 rounded-xl transition cursor-pointer text-xs font-semibold flex items-center gap-2 shrink-0 ${
+              isJava
+                ? 'bg-amber-950/30 text-white border border-amber-500/50 shadow-xs ring-1 ring-amber-500/20'
+                : 'bg-zinc-900/60 text-zinc-300 hover:text-white border border-white/10 hover:bg-zinc-800/60'
+            }`}
+          >
+            <JavaIcon className="w-5 h-5 shrink-0" />
+            <span>Java</span>
+          </button>
+
+          {/* C++ */}
+          <button
+            type="button"
+            onClick={() => handleLanguageSelect('cpp')}
+            className={`px-3.5 py-1.5 rounded-xl transition cursor-pointer text-xs font-semibold flex items-center gap-2 shrink-0 ${
+              isCpp
+                ? 'bg-blue-950/30 text-white border border-blue-500/50 shadow-xs ring-1 ring-blue-500/20'
+                : 'bg-zinc-900/60 text-zinc-300 hover:text-white border border-white/10 hover:bg-zinc-800/60'
+            }`}
+          >
+            <CppIcon className="w-5 h-5 shrink-0" />
+            <span>C++</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Editor Toolbar: [ Split | Editor | Output ] on Left, [ Reset | Copy | Run | Close ] on Right */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#15161a] border-b border-white/10 shrink-0 overflow-x-auto no-scrollbar select-none">
+        {/* Left Side: View Mode Pills */}
+        <div className="flex items-center bg-zinc-900/90 p-0.5 rounded-xl border border-white/10 text-xs shrink-0">
           <button
             type="button"
             onClick={() => setViewMode('split')}
-            className={`px-2 py-0.5 rounded-lg transition cursor-pointer flex items-center gap-1 text-[11px] ${
+            className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5 text-xs ${
               viewMode === 'split'
-                ? 'bg-white/15 text-white font-bold shadow-xs'
+                ? 'bg-zinc-800 text-white font-semibold shadow-xs'
                 : 'text-zinc-400 hover:text-white'
             }`}
             title="Split view (Editor + Terminal Output)"
           >
-            <Columns2 className="w-3 h-3" />
-            <span className="hidden sm:inline">Split</span>
+            <Columns2 className="w-3.5 h-3.5" />
+            <span>Split</span>
           </button>
 
           <button
             type="button"
             onClick={() => setViewMode('code')}
-            className={`px-2 py-0.5 rounded-lg transition cursor-pointer flex items-center gap-1 text-[11px] ${
+            className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5 text-xs ${
               viewMode === 'code'
-                ? 'bg-white/15 text-white font-bold shadow-xs'
+                ? 'bg-zinc-800 text-white font-semibold shadow-xs'
                 : 'text-zinc-400 hover:text-white'
             }`}
             title="Code editor full view"
           >
-            <SquareCode className="w-3 h-3" />
-            <span className="hidden sm:inline">Editor</span>
+            <SquareCode className="w-3.5 h-3.5" />
+            <span>Editor</span>
           </button>
 
           <button
             type="button"
             onClick={() => setViewMode('output')}
-            className={`px-2 py-0.5 rounded-lg transition cursor-pointer flex items-center gap-1 text-[11px] relative ${
+            className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5 text-xs ${
               viewMode === 'output'
-                ? 'bg-emerald-500/25 text-emerald-300 font-bold shadow-xs'
+                ? 'bg-zinc-800 text-white font-semibold shadow-xs'
                 : 'text-zinc-400 hover:text-white'
             }`}
             title="Terminal console output full view"
           >
-            <Terminal className="w-3 h-3 text-emerald-400" />
+            <Terminal className="w-3.5 h-3.5 text-emerald-400" />
             <span>Output</span>
-            {result && (
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  result.exitCode === 0 ? 'bg-emerald-400' : 'bg-rose-400'
-                }`}
-              />
-            )}
           </button>
         </div>
 
-        {/* Right Side: STDIN, Copy, Run */}
-        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-          <button
-            type="button"
-            onClick={() => setShowStdin(!showStdin)}
-            className={`px-2 py-1 rounded-lg text-[11px] font-mono transition border cursor-pointer shrink-0 ${
-              showStdin
-                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                : 'bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10 hover:text-white'
-            }`}
-            title="Custom STDIN input for input() prompts"
-          >
-            {showStdin ? 'Stdin: On' : '+ Input'}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleClearCode}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/10 transition cursor-pointer shrink-0"
-            title="Clear code editor"
-          >
-            <Eraser className="w-3.5 h-3.5" />
-          </button>
-
+        {/* Right Side: Reset, Copy, Run, Close */}
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           <button
             type="button"
             onClick={handleResetCode}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 transition cursor-pointer shrink-0"
-            title="Reset code editor"
+            className="p-1.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-white/10 transition cursor-pointer shrink-0"
+            title="Reset code template"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -471,28 +611,28 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
           <button
             type="button"
             onClick={handleCopyCode}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 transition cursor-pointer shrink-0 flex items-center gap-1 text-[11px]"
+            className="px-3 py-1.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 transition cursor-pointer shrink-0 flex items-center gap-1.5 text-xs"
             title="Copy Code"
           >
             {copied ? (
               <>
                 <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400 font-medium hidden md:inline">Copied</span>
+                <span className="text-emerald-400 font-medium">Copied</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                <span className="text-zinc-300 hidden md:inline">Copy</span>
+                <span>Copy</span>
               </>
             )}
           </button>
 
-          {/* Prominently visible Run Code Button */}
+          {/* Prominently Styled Primary Run Button */}
           <button
             type="button"
             disabled={isRunning}
             onClick={handleRun}
-            className="px-3.5 py-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-zinc-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition disabled:opacity-50 cursor-pointer shrink-0 active:scale-95"
+            className="px-4 py-1.5 rounded-full bg-[#00d084] hover:bg-[#00e894] text-zinc-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition disabled:opacity-50 cursor-pointer shrink-0"
             title="Run Code (Ctrl + Enter)"
           >
             {isRunning ? (
@@ -512,7 +652,7 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/10 transition cursor-pointer shrink-0"
+              className="p-1.5 rounded-xl bg-zinc-900/90 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/10 transition cursor-pointer shrink-0"
               title="Close Terminal"
             >
               <X className="w-3.5 h-3.5" />
@@ -521,35 +661,19 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
         </div>
       </div>
 
-      {/* Optional Stdin input box */}
-      {showStdin && (
-        <div className="p-2.5 bg-zinc-900/90 border-b border-white/10 flex flex-col gap-1 text-xs shrink-0">
-          <label className="text-[10px] font-mono text-purple-300 font-semibold flex items-center gap-1">
-            <span>STDIN (Standard Input) for input() calls:</span>
-          </label>
-          <textarea
-            value={inputStdin}
-            onChange={(e) => setInputStdin(e.target.value)}
-            placeholder="Type standard input values (one per line)..."
-            rows={2}
-            className="w-full bg-black/60 border border-purple-500/30 rounded-lg p-2 font-mono text-xs text-purple-100 placeholder-zinc-500 focus:outline-none focus:border-purple-400"
-          />
-        </div>
-      )}
-
-      {/* Middle Layout Area: Editor + Output Container */}
+      {/* 3. Middle Layout Area: Editor + Output Container */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Code Editor Section (Visible in 'split' or 'code' mode) */}
         {(viewMode === 'split' || viewMode === 'code') && (
           <div
             className={`relative ${
               viewMode === 'code' ? 'flex-1 min-h-0' : 'flex-[1.1] min-h-[140px]'
-            } flex bg-[#0d0d0d] overflow-hidden text-[13px] leading-relaxed`}
+            } flex bg-[#0c0d0f] overflow-hidden text-[13px] leading-relaxed`}
           >
             {/* Line Numbers Gutter */}
             <div
               ref={gutterRef}
-              className="w-9 py-3 bg-[#09090b] text-zinc-600 select-none font-mono text-right pr-2 text-xs border-r border-white/5 overflow-hidden shrink-0 space-y-0"
+              className="w-10 py-3 bg-[#090a0c] text-zinc-600 select-none font-mono text-right pr-3 text-xs border-r border-white/5 overflow-hidden shrink-0 space-y-0"
               style={{ lineHeight: '1.625rem' }}
             >
               {lineNumbers.map((num) => (
@@ -609,17 +733,17 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
           </div>
         )}
 
-        {/* Terminal / Output Section (Visible in 'split' or 'output' mode) */}
+        {/* 4. Terminal / Output Section (Visible in 'split' or 'output' mode) */}
         {(viewMode === 'split' || viewMode === 'output') && (
           <div
-            className={`border-t border-white/10 bg-[#0a0a0c] flex flex-col overflow-hidden ${
+            className={`border-t border-white/10 bg-[#090a0c] flex flex-col overflow-hidden ${
               viewMode === 'output' ? 'flex-1 min-h-0' : 'flex-[0.9] min-h-[130px]'
             }`}
           >
             {/* Terminal Header Bar */}
-            <div className="flex items-center justify-between px-3 py-1.5 bg-[#18181b] border-b border-white/10 text-xs shrink-0 select-none">
-              <div className="flex items-center gap-2 text-zinc-300 font-mono">
-                <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="flex items-center justify-between px-3.5 py-2 bg-[#121316] border-b border-white/10 text-xs shrink-0 select-none">
+              <div className="flex items-center gap-2 text-zinc-200 font-mono">
+                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="font-semibold text-zinc-200">Terminal Output</span>
                 {result && (
                   <span
@@ -680,37 +804,28 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
                   </button>
                 )}
 
-                {viewMode === 'split' && (
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('output')}
-                    className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
-                    title="Maximize output terminal"
-                  >
-                    <Maximize2 className="w-3 h-3" />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setViewMode(viewMode === 'output' ? 'split' : 'output')}
+                  className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition cursor-pointer"
+                  title={viewMode === 'output' ? 'Restore split view' : 'Maximize terminal output'}
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
 
             {/* Terminal Content Stream */}
             <div
               ref={outputContainerRef}
-              className="p-3 overflow-y-auto font-mono text-xs text-zinc-200 flex-1 leading-relaxed bg-[#050505] space-y-2 select-text"
+              className="p-4 overflow-y-auto font-mono text-xs text-zinc-200 flex-1 leading-relaxed bg-[#07080a] space-y-2 select-text"
             >
               {isRunning ? (
-                <div className="flex items-center gap-2 text-cyan-300 py-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                <div className="flex items-center gap-2 text-emerald-400 py-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
                   <span>
                     Executing{' '}
-                    {language === 'python' || language === 'py'
-                      ? 'Python'
-                      : language === 'go' || language === 'golang'
-                      ? 'Golang'
-                      : language === 'java'
-                      ? 'Java'
-                      : 'C++'}{' '}
-                    natively...
+                    {isPython ? 'Python' : isGo ? 'Golang' : isJava ? 'Java' : 'C++'} natively...
                   </span>
                 </div>
               ) : result ? (
@@ -742,16 +857,16 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center py-6 text-zinc-500 text-xs">
-                  <Terminal className="w-6 h-6 text-zinc-600 mb-1.5" />
-                  <p>
-                    Click <strong className="text-emerald-400">▶ Run</strong> or press{' '}
+                <div className="flex flex-col items-center justify-center h-full text-center py-6 text-zinc-500 text-xs space-y-1.5">
+                  <Terminal className="w-6 h-6 text-zinc-600 mb-0.5" />
+                  <div>
+                    Click <strong className="text-emerald-400 font-semibold">▶ Run</strong> or press{' '}
                     <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-300 font-mono text-[11px]">
                       Ctrl+Enter
                     </kbd>{' '}
                     to execute code.
-                  </p>
-                  <p className="text-[11px] text-zinc-600 mt-1">Terminal output and stdout streams will render here.</p>
+                  </div>
+                  <div className="text-[11px] text-zinc-600">Terminal output and stdout streams will render here.</div>
                 </div>
               )}
             </div>
@@ -761,3 +876,4 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
     </div>
   );
 };
+

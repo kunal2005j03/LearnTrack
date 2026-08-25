@@ -111,7 +111,12 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
       const saved = localStorage.getItem(`learntrack_terminal_nav_${course.id || course.playlistId || 'default'}`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.activeLanguage) return parsed.activeLanguage;
+        if (parsed.userExplicitlySelectedLanguage && parsed.activeLanguage) {
+          const l = parsed.activeLanguage.toLowerCase();
+          if (l === 'python' || l === 'go' || l === 'golang' || l === 'java' || l === 'cpp' || l === 'c++') {
+            return l;
+          }
+        }
       }
     } catch {}
     return 'python';
@@ -442,8 +447,6 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
           code: '',
           language: activeLanguageForTerminal,
           result: null,
-          inputStdin: '',
-          showStdin: false,
           viewMode: 'split',
         })
       );
@@ -451,7 +454,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
         new CustomEvent('learntrack_terminal_state_updated', {
           detail: {
             storageKey: termStateKey,
-            state: { code: '', language: activeLanguageForTerminal, result: null, inputStdin: '', showStdin: false, viewMode: 'split' },
+            state: { code: '', language: activeLanguageForTerminal, result: null, viewMode: 'split' },
           },
         })
       );
@@ -937,28 +940,6 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
             <FileText className="w-4 h-4 text-cyan-400" />
             <span>Notes / Summary</span>
           </button>
-
-          <button
-            type="button"
-            onClick={triggerPseudocode}
-            disabled={isLoading}
-            className="px-3.5 py-2 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 font-bold text-xs whitespace-nowrap flex items-center gap-2 shrink-0 transition cursor-pointer active:scale-95 shadow-sm"
-            title="Generate clean algorithmic pseudocode"
-          >
-            <ListOrdered className="w-4 h-4 text-amber-400" />
-            <span>Pseudocode</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={triggerGenerateFlowchart}
-            disabled={isLoading}
-            className="px-3.5 py-2 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 font-bold text-xs whitespace-nowrap flex items-center gap-2 shrink-0 transition cursor-pointer active:scale-95 shadow-sm"
-            title="Generate step-by-step logic flowchart diagram"
-          >
-            <GitCommit className="w-4 h-4 text-emerald-400" />
-            <span>Flowchart</span>
-          </button>
         </div>
       </div>
 
@@ -1126,6 +1107,9 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
             onCodeChange={(newCode) => {
               setActiveSnippetForTerminal(newCode || null);
             }}
+            onLanguageChange={(newLang) => {
+              setActiveLanguageForTerminal(newLang);
+            }}
             onClearCode={() => {
               handleClearSnippet();
             }}
@@ -1147,16 +1131,16 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
             <div className="space-y-1">
               <h3 className="text-base font-bold text-white">How can I assist your study today?</h3>
               <p className="text-xs text-zinc-400">
-                Ask anything about <strong>{course.title}</strong>, extract code at current playback, or generate a logic flowchart.
+                Ask anything about <strong>{course.title}</strong>, or generate structured summary notes.
               </p>
             </div>
 
             {/* Quick Starter Prompt Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full pt-2">
+            <div className="w-full pt-2">
               <button
                 type="button"
                 onClick={triggerSummarize}
-                className="p-3 rounded-2xl bg-[#2f2f2f] hover:bg-[#383838] border border-white/8 text-left transition cursor-pointer hover:border-white/20 group"
+                className="w-full p-3.5 rounded-2xl bg-[#2f2f2f] hover:bg-[#383838] border border-white/8 text-left transition cursor-pointer hover:border-white/20 group"
               >
                 <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold mb-1">
                   <FileText className="w-4 h-4" />
@@ -1164,34 +1148,6 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
                 </div>
                 <p className="text-[11px] text-zinc-400 group-hover:text-zinc-300">
                   Summarize key principles & Big-O complexity for this lesson.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={triggerPseudocode}
-                className="p-3 rounded-2xl bg-[#2f2f2f] hover:bg-[#383838] border border-white/8 text-left transition cursor-pointer hover:border-white/20 group"
-              >
-                <div className="flex items-center gap-2 text-amber-400 text-xs font-bold mb-1">
-                  <ListOrdered className="w-4 h-4" />
-                  <span>Pseudocode</span>
-                </div>
-                <p className="text-[11px] text-zinc-400 group-hover:text-zinc-300">
-                  Step-by-step algorithmic breakdown and invariant steps.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={triggerGenerateFlowchart}
-                className="p-3 rounded-2xl bg-[#2f2f2f] hover:bg-[#383838] border border-white/8 text-left transition cursor-pointer hover:border-white/20 group"
-              >
-                <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-1">
-                  <GitCommit className="w-4 h-4" />
-                  <span>Flowchart</span>
-                </div>
-                <p className="text-[11px] text-zinc-400 group-hover:text-zinc-300">
-                  Visual execution flowchart diagram of the logic.
                 </p>
               </button>
             </div>

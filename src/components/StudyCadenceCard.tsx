@@ -421,12 +421,12 @@ export const StudyCadenceCard: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {cadenceDays.slice(0, 7).map((day, idx) => (
             <button
               key={`w1-${idx}`}
               onClick={() => setSelectedDayPoint(day)}
-              className={`flex flex-col items-center justify-between p-2 rounded-2xl border text-center transition-all cursor-pointer select-none relative ${
+              className={`flex flex-col items-center justify-between p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border text-center transition-all cursor-pointer select-none relative ${
                 day.isToday
                   ? 'ring-2 ring-[var(--accent)] border-[var(--accent)] shadow-md bg-[var(--surface-high)]'
                   : selectedDayPoint?.dateStr === day.dateStr
@@ -491,12 +491,12 @@ export const StudyCadenceCard: React.FC = () => {
             <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--ink-faint)]">
               Week 2
             </div>
-            <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {cadenceDays.slice(7, 14).map((day, idx) => (
                 <button
                   key={`w2-${idx}`}
                   onClick={() => setSelectedDayPoint(day)}
-                  className={`flex flex-col items-center justify-between p-2 rounded-2xl border text-center transition-all cursor-pointer select-none relative ${
+                  className={`flex flex-col items-center justify-between p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border text-center transition-all cursor-pointer select-none relative ${
                     day.isToday
                       ? 'ring-2 ring-[var(--accent)] border-[var(--accent)] shadow-md bg-[var(--surface-high)]'
                       : selectedDayPoint?.dateStr === day.dateStr

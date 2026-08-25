@@ -53,13 +53,13 @@ export const StreakCard: React.FC = () => {
           style={{ background: 'var(--accent)' }}
         />
 
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-inner">
+        <div className="flex flex-col xs:flex-row xs:items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-inner shrink-0">
               <Flame className="w-6 h-6 fill-amber-500" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-2xl font-black text-[var(--ink)] tracking-tight">
                   {stats.currentStreak}
                 </span>
@@ -67,7 +67,7 @@ export const StreakCard: React.FC = () => {
                   {stats.currentStreak === 1 ? 'Day Streak' : 'Days Streak'}
                 </span>
               </div>
-              <p className="text-xs text-[var(--ink-faint)] mt-0.5">
+              <p className="text-xs text-[var(--ink-faint)] mt-0.5 truncate">
                 {streakDetails.hasWatchedToday
                   ? '🔥 Streak active! You learned today'
                   : '⚡ Complete 1 lesson today to keep your streak'}
@@ -75,7 +75,7 @@ export const StreakCard: React.FC = () => {
             </div>
           </div>
 
-          <div className="text-right">
+          <div className="text-left xs:text-right shrink-0">
             <div className="text-xs font-semibold text-[var(--ink-faint)] uppercase tracking-wider">
               Total Watched
             </div>
@@ -118,16 +118,16 @@ export const StreakCard: React.FC = () => {
 
         {/* Streak Milestone Level Progress Bar */}
         <div className="space-y-1.5 pt-1">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="text-[var(--ink-dim)] flex items-center gap-1 font-medium">
+          <div className="flex items-center justify-between text-[11px] gap-2 min-w-0">
+            <span className="text-[var(--ink-dim)] flex items-center gap-1 font-medium min-w-0 truncate">
               <span>{milestoneInfo.currentTier?.badge || '🌱'}</span>
-              <span>{milestoneInfo.currentTier?.title || 'Starting Out'}</span>
-              <ChevronRight className="w-3 h-3 text-[var(--ink-faint)]" />
-              <span className="text-[var(--ink)] font-semibold">
+              <span className="truncate">{milestoneInfo.currentTier?.title || 'Starting Out'}</span>
+              <ChevronRight className="w-3 h-3 text-[var(--ink-faint)] shrink-0" />
+              <span className="text-[var(--ink)] font-semibold truncate">
                 {milestoneInfo.nextMilestone.badge} {milestoneInfo.nextMilestone.title} ({milestoneInfo.nextMilestone.days}d)
               </span>
             </span>
-            <span className="text-[var(--ink-faint)] font-mono">
+            <span className="text-[var(--ink-faint)] font-mono shrink-0">
               {milestoneInfo.daysRemaining === 0
                 ? 'Achieved!'
                 : `${milestoneInfo.daysRemaining}d left`}

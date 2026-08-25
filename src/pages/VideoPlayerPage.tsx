@@ -6,7 +6,10 @@ import { FormattedDescription } from '../components/FormattedDescription';
 import { formatSeconds, getCourseRemainingTimeStats } from '../utils/formatters';
 import { fetchOrResolveChapters, parseYouTubeChapters, getCachedChapters, setCachedChapters } from '../utils/chapterParser';
 import { DoubtContext, CourseVideo, YouTubeChapter, YouTubePlayerState } from '../types';
-import { CourseAiAssistant } from '../components/CourseAiAssistant';
+
+const CourseAiAssistant = React.lazy(() =>
+  import('../components/CourseAiAssistant').then((m) => ({ default: m.CourseAiAssistant }))
+);
 import {
   ArrowLeft,
   ChevronLeft,
@@ -1071,22 +1074,31 @@ export const VideoPlayerPage: React.FC = () => {
                       {/* AI Assistant Tab (Fullscreen Mode) */}
                       <div className={fullscreenOverlayTab === 'ai_assistant' ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
                         {course && currentVideo ? (
-                          <CourseAiAssistant
-                            course={course}
-                            currentVideo={currentVideo}
-                            currentTimeSeconds={liveCurrentTime}
-                            currentChapter={currentChapter}
-                            chapters={chapters}
-                            completedVideoIds={completedVideoIds}
-                            allVideos={videos}
-                            isFullscreenMode={true}
-                            doubtContext={doubtContext}
-                            onClearDoubtContext={() => setDoubtContext(null)}
-                            onClose={() => {
-                              setIsFullscreenOverlayOpen(false);
-                              setDoubtContext(null);
-                            }}
-                          />
+                          <React.Suspense
+                            fallback={
+                              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-zinc-400 gap-2">
+                                <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                                <span>Loading AI Assistant & Vision OCR...</span>
+                              </div>
+                            }
+                          >
+                            <CourseAiAssistant
+                              course={course}
+                              currentVideo={currentVideo}
+                              currentTimeSeconds={liveCurrentTime}
+                              currentChapter={currentChapter}
+                              chapters={chapters}
+                              completedVideoIds={completedVideoIds}
+                              allVideos={videos}
+                              isFullscreenMode={true}
+                              doubtContext={doubtContext}
+                              onClearDoubtContext={() => setDoubtContext(null)}
+                              onClose={() => {
+                                setIsFullscreenOverlayOpen(false);
+                                setDoubtContext(null);
+                              }}
+                            />
+                          </React.Suspense>
                         ) : (
                           <div className="p-4 text-center text-xs text-zinc-400">Loading course context...</div>
                         )}
@@ -1673,22 +1685,31 @@ export const VideoPlayerPage: React.FC = () => {
           <div className={sidebarTab === 'ai_assistant' ? 'block' : 'hidden'}>
             <div className="bg-[var(--surface-low)] border border-[var(--border)] rounded-[24px] overflow-hidden flex flex-col shadow-sm transition-all h-[640px] max-h-[85vh]">
               {course && currentVideo ? (
-                <CourseAiAssistant
-                  course={course}
-                  currentVideo={currentVideo}
-                  currentTimeSeconds={liveCurrentTime}
-                  currentChapter={currentChapter}
-                  chapters={chapters}
-                  completedVideoIds={completedVideoIds}
-                  allVideos={videos}
-                  isFullscreenMode={false}
-                  doubtContext={doubtContext}
-                  onClearDoubtContext={() => setDoubtContext(null)}
-                  onClose={() => {
-                    setShowPlaylistSidebar(false);
-                    setDoubtContext(null);
-                  }}
-                />
+                <React.Suspense
+                  fallback={
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-[var(--ink-faint)] gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
+                      <span>Loading AI Assistant...</span>
+                    </div>
+                  }
+                >
+                  <CourseAiAssistant
+                    course={course}
+                    currentVideo={currentVideo}
+                    currentTimeSeconds={liveCurrentTime}
+                    currentChapter={currentChapter}
+                    chapters={chapters}
+                    completedVideoIds={completedVideoIds}
+                    allVideos={videos}
+                    isFullscreenMode={false}
+                    doubtContext={doubtContext}
+                    onClearDoubtContext={() => setDoubtContext(null)}
+                    onClose={() => {
+                      setShowPlaylistSidebar(false);
+                      setDoubtContext(null);
+                    }}
+                  />
+                </React.Suspense>
               ) : (
                 <div className="p-4 text-center text-xs text-[var(--ink-faint)]">Loading course assistant...</div>
               )}
@@ -1915,22 +1936,31 @@ export const VideoPlayerPage: React.FC = () => {
               {/* Mobile AI Assistant Tab */}
               <div className={sidebarTab === 'ai_assistant' ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
                 {course && currentVideo ? (
-                  <CourseAiAssistant
-                    course={course}
-                    currentVideo={currentVideo}
-                    currentTimeSeconds={liveCurrentTime}
-                    currentChapter={currentChapter}
-                    chapters={chapters}
-                    completedVideoIds={completedVideoIds}
-                    allVideos={videos}
-                    isFullscreenMode={false}
-                    doubtContext={doubtContext}
-                    onClearDoubtContext={() => setDoubtContext(null)}
-                    onClose={() => {
-                      setShowMobileDrawer(false);
-                      setDoubtContext(null);
-                    }}
-                  />
+                  <React.Suspense
+                    fallback={
+                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-[var(--ink-faint)] gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
+                        <span>Loading AI Assistant...</span>
+                      </div>
+                    }
+                  >
+                    <CourseAiAssistant
+                      course={course}
+                      currentVideo={currentVideo}
+                      currentTimeSeconds={liveCurrentTime}
+                      currentChapter={currentChapter}
+                      chapters={chapters}
+                      completedVideoIds={completedVideoIds}
+                      allVideos={videos}
+                      isFullscreenMode={false}
+                      doubtContext={doubtContext}
+                      onClearDoubtContext={() => setDoubtContext(null)}
+                      onClose={() => {
+                        setShowMobileDrawer(false);
+                        setDoubtContext(null);
+                      }}
+                    />
+                  </React.Suspense>
                 ) : (
                   <div className="p-4 text-center text-xs text-[var(--ink-faint)]">Loading course assistant...</div>
                 )}
