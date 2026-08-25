@@ -84,14 +84,12 @@ gcloud run deploy learntrack-main \
   --source . \
   --allow-unauthenticated \
   --service-account="learntrack-backend-sa@learntrack-506616.iam.gserviceaccount.com" \
-  --set-env-vars="EXECUTION_SERVICE_URL=https://learntrack-execution-sandbox-xxxxxxxxxx-uc.a.run.app" \
+  --set-env-vars="EXECUTION_SERVICE_URL=https://learntrack-execution-sandbox-gxgprgtggq-uc.a.run.app" \
   --memory 1Gi \
   --cpu 1 \
   --port 8080 \
   --region us-central1
 ```
-
-*(Note: Replace `https://learntrack-execution-sandbox-xxxxxxxxxx-uc.a.run.app` with the real URL from Step 2).*
 
 ---
 
