@@ -22,8 +22,8 @@ function getGoogleAuthClient(): GoogleAuth {
 
 /**
  * Returns authorization headers for calling a private Cloud Run service with an authenticated ID token.
- * If target is localhost or HTTP (local dev), returns default JSON headers.
- * In Cloud Run production or environments with Google credentials, attaches 'Authorization: Bearer <ID_TOKEN>'.
+ * Uses the attached Cloud Run runtime service account identity via google-auth-library.
+ * Audience is the exact target Cloud Run execution service URL (e.g. EXECUTION_SERVICE_URL).
  */
 async function getCloudRunAuthHeaders(targetUrl: string): Promise<Record<string, string>> {
   const isLocal = targetUrl.startsWith('http://localhost') || targetUrl.startsWith('http://127.0.0.1');
@@ -31,27 +31,53 @@ async function getCloudRunAuthHeaders(targetUrl: string): Promise<Record<string,
     return { 'Content-Type': 'application/json' };
   }
 
-  // Audience must be the target Cloud Run service root URL (without trailing slash or subpaths)
+  // Audience must be the exact target Cloud Run service root URL (without trailing slash or subpaths)
   const audience = targetUrl.trim().replace(/\/+$/, '');
   
   try {
     const auth = getGoogleAuthClient();
     const client = await auth.getIdTokenClient(audience);
     const clientHeaders = await client.getRequestHeaders();
-    const headersMap: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (clientHeaders && typeof clientHeaders === 'object') {
-      if ('forEach' in clientHeaders && typeof (clientHeaders as any).forEach === 'function') {
+    
+    const headersMap: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (clientHeaders) {
+      if (typeof (clientHeaders as any).forEach === 'function') {
         (clientHeaders as any).forEach((value: string, key: string) => {
           headersMap[key] = value;
         });
-      } else {
-        Object.assign(headersMap, clientHeaders as unknown as Record<string, string>);
+      } else if (typeof clientHeaders === 'object') {
+        for (const [k, v] of Object.entries(clientHeaders)) {
+          if (v && typeof v === 'string') {
+            headersMap[k] = v;
+          }
+        }
       }
     }
+
+    // Ensure Authorization header exists; if not found in clientHeaders map, attempt direct token retrieval
+    if (!headersMap['Authorization'] && !headersMap['authorization']) {
+      try {
+        let idToken: string | undefined;
+        if (typeof (client as any).fetchIdToken === 'function') {
+          idToken = await (client as any).fetchIdToken(audience);
+        } else if ((client as any).idTokenProvider && typeof (client as any).idTokenProvider.fetchIdToken === 'function') {
+          idToken = await (client as any).idTokenProvider.fetchIdToken(audience);
+        }
+        if (idToken) {
+          headersMap['Authorization'] = `Bearer ${idToken}`;
+        }
+      } catch {
+        // Fallback gracefully if direct fetch is not applicable
+      }
+    }
+
     return headersMap;
   } catch (err: any) {
     console.warn(`[Execution Service Auth] Notice: Could not acquire Google ID Token for target ${audience}: ${err?.message || err}`);
-    // If running in development without a Google service account or ADC, return standard headers.
+    // If running in development without a Google service account or ADC, return standard JSON headers.
     return { 'Content-Type': 'application/json' };
   }
 }
