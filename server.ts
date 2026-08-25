@@ -3,12 +3,58 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { GoogleAuth } from 'google-auth-library';
 import { resolveVideoChapters } from './server/youtubeChapters';
 import fs from 'fs/promises';
 import os from 'os';
 import crypto from 'crypto';
 
 dotenv.config();
+
+// Lazy Google Auth client initialization for Cloud Run IAM Service-to-Service authentication
+let googleAuthClient: GoogleAuth | null = null;
+function getGoogleAuthClient(): GoogleAuth {
+  if (!googleAuthClient) {
+    googleAuthClient = new GoogleAuth();
+  }
+  return googleAuthClient;
+}
+
+/**
+ * Returns authorization headers for calling a private Cloud Run service with an authenticated ID token.
+ * If target is localhost or HTTP (local dev), returns default JSON headers.
+ * In Cloud Run production or environments with Google credentials, attaches 'Authorization: Bearer <ID_TOKEN>'.
+ */
+async function getCloudRunAuthHeaders(targetUrl: string): Promise<Record<string, string>> {
+  const isLocal = targetUrl.startsWith('http://localhost') || targetUrl.startsWith('http://127.0.0.1');
+  if (isLocal) {
+    return { 'Content-Type': 'application/json' };
+  }
+
+  // Audience must be the target Cloud Run service root URL (without trailing slash or subpaths)
+  const audience = targetUrl.trim().replace(/\/+$/, '');
+  
+  try {
+    const auth = getGoogleAuthClient();
+    const client = await auth.getIdTokenClient(audience);
+    const clientHeaders = await client.getRequestHeaders();
+    const headersMap: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (clientHeaders && typeof clientHeaders === 'object') {
+      if ('forEach' in clientHeaders && typeof (clientHeaders as any).forEach === 'function') {
+        (clientHeaders as any).forEach((value: string, key: string) => {
+          headersMap[key] = value;
+        });
+      } else {
+        Object.assign(headersMap, clientHeaders as unknown as Record<string, string>);
+      }
+    }
+    return headersMap;
+  } catch (err: any) {
+    console.warn(`[Execution Service Auth] Notice: Could not acquire Google ID Token for target ${audience}: ${err?.message || err}`);
+    // If running in development without a Google service account or ADC, return standard headers.
+    return { 'Content-Type': 'application/json' };
+  }
+}
 
 // Lazy Gemini API Client initialization
 let aiClient: GoogleGenAI | null = null;
@@ -66,7 +112,7 @@ function extractPlaylistId(input: string): string | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
 
   // Basic security and referrer headers - explicitly ensuring strict-origin-when-cross-origin for YouTube IFrame Player
   app.use((req, res, next) => {
@@ -76,7 +122,11 @@ async function startServer() {
 
   app.use(express.json({ limit: '25mb' }));
 
-  // Health check
+  // Root & API Health checks for Cloud Run and GCP load balancer probes
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
+
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
@@ -1047,7 +1097,11 @@ CRITICAL DIRECTIVES FOR CODE EXTRACTION:
       return res.status(503).json({
         success: false,
         errorType: "EXECUTION_SERVICE_UNAVAILABLE",
-        message: "Code execution service is temporarily unavailable. (Missing EXECUTION_SERVICE_URL configuration)"
+        message: "Code execution service is temporarily unavailable. (Missing EXECUTION_SERVICE_URL configuration)",
+        stdout: "",
+        stderr: "Code execution service is temporarily unavailable. Missing EXECUTION_SERVICE_URL environment variable.",
+        exitCode: 1,
+        executionTimeMs: 0,
       });
     }
 
@@ -1061,11 +1115,12 @@ CRITICAL DIRECTIVES FOR CODE EXTRACTION:
     }
 
     try {
+      // Obtain Google Cloud Run IAM ID token headers for private service-to-service communication
+      const authHeaders = await getCloudRunAuthHeaders(baseUrl);
+
       const execResponse = await fetch(`${baseUrl}/run`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: authHeaders,
         body: JSON.stringify({
           language: cleanLang,
           code,
@@ -1073,8 +1128,42 @@ CRITICAL DIRECTIVES FOR CODE EXTRACTION:
         }),
       });
 
+      // Handle Private Cloud Run IAM Authentication Errors (401 / 403)
+      if (execResponse.status === 401 || execResponse.status === 403) {
+        return res.status(execResponse.status).json({
+          success: false,
+          errorType: "EXECUTION_SERVICE_AUTH_REQUIRED",
+          message: "Private Cloud Run execution service requires IAM authentication (roles/run.invoker).",
+          stdout: "",
+          stderr: `Authentication Error (${execResponse.status}): Access denied to private Cloud Run execution sandbox. In production, ensure the LearnTrack backend service account has the 'roles/run.invoker' role on learntrack-execution-sandbox.`,
+          exitCode: 1,
+          executionTimeMs: 0,
+        });
+      }
+
+      if (execResponse.status === 404) {
+        return res.status(404).json({
+          success: false,
+          errorType: "EXECUTION_SERVICE_NOT_FOUND",
+          message: "Execution endpoint /run not found on the target service.",
+          stdout: "",
+          stderr: "Execution service endpoint /run was not found (404). Check EXECUTION_SERVICE_URL configuration.",
+          exitCode: 1,
+          executionTimeMs: 0,
+        });
+      }
+
       if (!execResponse.ok) {
-        throw new Error(`Execution service responded with status ${execResponse.status}`);
+        const errorText = await execResponse.text().catch(() => '');
+        return res.status(execResponse.status).json({
+          success: false,
+          errorType: "EXECUTION_SERVICE_ERROR",
+          message: `Execution service error (Status ${execResponse.status}): ${errorText}`,
+          stdout: "",
+          stderr: `Execution service responded with error status ${execResponse.status}: ${errorText}`,
+          exitCode: 1,
+          executionTimeMs: 0,
+        });
       }
 
       const result = await execResponse.json();
@@ -1082,13 +1171,20 @@ CRITICAL DIRECTIVES FOR CODE EXTRACTION:
     } catch (err: any) {
       console.error("Code execution service error:", err);
 
-      const isConnectionError = err.message.includes("ECONNREFUSED") || err.message.includes("fetch") || err.message.includes("Failed to fetch");
+      const isConnectionError = err.message.includes("ECONNREFUSED") ||
+        err.message.includes("fetch") ||
+        err.message.includes("ENOTFOUND") ||
+        err.message.includes("Failed to fetch");
       
       if (isConnectionError) {
         return res.status(503).json({
           success: false,
           errorType: "EXECUTION_SERVICE_UNAVAILABLE",
-          message: "Code execution service is temporarily unavailable."
+          message: "Code execution service is temporarily unavailable.",
+          stdout: "",
+          stderr: "Code execution service is temporarily unavailable. Could not connect to EXECUTION_SERVICE_URL.",
+          exitCode: 1,
+          executionTimeMs: 0,
         });
       }
 

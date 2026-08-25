@@ -4,8 +4,10 @@ This is an isolated execution microservice designed to safely run user-submitted
 
 ## Security Architecture
 
-- **Isolation**: Runs inside a Google Cloud Run container.
-- **Resource Constraints**: Cloud Run isolates memory and CPU per request. Execution time is capped at 7 seconds by `main.py`. 
+- **Private Cloud Run Service**: Deployed with `--no-allow-unauthenticated` so the service cannot be called by the public internet.
+- **IAM Authentication**: Only callers with `roles/run.invoker` (such as the LearnTrack backend service account) can invoke the sandbox using Google-signed OpenID Connect (OIDC) ID tokens.
+- **Container Isolation**: Runs inside an isolated Google Cloud Run container.
+- **Resource Constraints**: Cloud Run isolates memory (1GiB) and CPU (1 vCPU) per container. Execution time is strictly capped at 7 seconds by `main.py`.
 - **Non-root**: The execution process runs as a low-privilege `sandboxuser`.
 - **Ephemeral State**: Each run executes in a uniquely generated, temporary workspace that is destroyed immediately after execution.
 
@@ -17,9 +19,9 @@ This is an isolated execution microservice designed to safely run user-submitted
 - Java (`java`)
 - Go (`go`, `golang`)
 
-## Deployment Guide
+## Deployment Guide (Private Service-to-Service)
 
-Follow these exact steps to securely deploy the sandbox to Google Cloud Run.
+Follow these exact steps to securely deploy the sandbox to Google Cloud Run with IAM service-to-service authentication.
 
 ### 1. Prerequisites
 
@@ -41,16 +43,16 @@ Ensure your GCP project has the required APIs enabled for Cloud Run and Cloud Bu
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
 ```
 
-### 3. Deploy to Cloud Run
+### 3. Deploy Private Execution Sandbox to Cloud Run
 
-Navigate to this `execution-sandbox/` directory and run the following command. This will build the Docker image remotely using Cloud Build and deploy it to a dedicated Cloud Run service.
+Navigate to this `execution-sandbox/` directory and deploy with `--no-allow-unauthenticated`:
 
 ```bash
 cd execution-sandbox
 
 gcloud run deploy learntrack-execution-sandbox \
   --source . \
-  --allow-unauthenticated \
+  --no-allow-unauthenticated \
   --memory 1Gi \
   --cpu 1 \
   --max-instances 10 \
@@ -58,17 +60,35 @@ gcloud run deploy learntrack-execution-sandbox \
   --region us-central1
 ```
 
-*(Note: We set `--allow-unauthenticated` so the main LearnTrack backend can call it directly. You can restrict this later using IAM if your LearnTrack backend is also hosted on GCP).*
+Copy the generated Service URL (e.g. `https://learntrack-execution-sandbox-xxxxxxxxxx-uc.a.run.app`).
 
-### 4. Configure LearnTrack
+### 4. Create Service Account & Grant Invoker Role
 
-After a successful deployment, the `gcloud` command will output a Service URL. It will look something like:
-`https://learntrack-execution-sandbox-xxxxxxxxxx-uc.a.run.app`
+Create a dedicated service account for your main LearnTrack backend:
 
-Copy this URL and set it as an environment variable in your main LearnTrack deployment (or in the AI Studio Settings / `.env` for production).
+```bash
+# 1. Create the backend service account
+gcloud iam service-accounts create learntrack-backend-sa \
+  --description="Service account for LearnTrack Backend to invoke execution sandbox" \
+  --display-name="LearnTrack Backend SA"
 
-```env
-EXECUTION_SERVICE_URL=https://learntrack-execution-sandbox-xxxxxxxxxx-uc.a.run.app
+# 2. Grant roles/run.invoker on the private execution sandbox
+gcloud run services add-iam-policy-binding learntrack-execution-sandbox \
+  --region=us-central1 \
+  --member="serviceAccount:learntrack-backend-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/run.invoker"
 ```
 
-Restart your main LearnTrack server. The web app will now cleanly route all code execution requests to this secure, isolated Google Cloud Run endpoint.
+### 5. Deploy / Configure Main LearnTrack Backend
+
+When deploying your main LearnTrack backend to Cloud Run, attach the service account and set `EXECUTION_SERVICE_URL`:
+
+```bash
+gcloud run deploy learntrack-main \
+  --source . \
+  --service-account="learntrack-backend-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --set-env-vars="EXECUTION_SERVICE_URL=https://learntrack-execution-sandbox-xxxxxxxxxx-uc.a.run.app" \
+  --region=us-central1
+```
+
+The LearnTrack backend will automatically obtain Google-authenticated ID tokens from the Cloud Run metadata server to securely invoke the private execution service.
