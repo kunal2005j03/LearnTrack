@@ -8,16 +8,15 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  Cell,
-} from 'recharts';
+  Cell } from 'recharts';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import { Course, VideoProgress } from '../types';
 import {
   formatSeconds,
   formatTotalWatchTime,
   getCourseRemainingTimeStats,
-  formatEstimatedTimeRemaining,
-} from '../utils/formatters';
+  formatEstimatedTimeRemaining } from '../utils/formatters';
 import { TrendingUp, CheckCircle2, BookOpen, Layers, Award, Clock, Hourglass } from 'lucide-react';
 
 interface CourseTrendChartProps {
@@ -27,9 +26,9 @@ interface CourseTrendChartProps {
 
 export const CourseTrendChart: React.FC<CourseTrendChartProps> = ({
   selectedCourseId,
-  onSelectCourse,
-}) => {
-  const { courses, progressMap, cachedVideos, openCourse } = useLearnTrack();
+  onSelectCourse }) => {
+  const { courses,  cachedVideos, openCourse } = useLearnTrack();
+  const progressMap = useProgressMap();
   const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
 
   // Active course for detailed trend inspection
@@ -84,8 +83,7 @@ export const CourseTrendChart: React.FC<CourseTrendChartProps> = ({
       date: createdDate,
       percentage: 0,
       completedCount: 0,
-      lessonTitle: 'Course Enrolled',
-    });
+      lessonTitle: 'Course Enrolled' });
 
     let cumulativeCompleted = 0;
     const completedSet = new Set<string>();
@@ -98,16 +96,14 @@ export const CourseTrendChart: React.FC<CourseTrendChartProps> = ({
           const pct = Math.min(100, Math.round((cumulativeCompleted / totalVideos) * 100));
           const dateLabel = new Date(p.lastWatchedAt).toLocaleDateString(undefined, {
             month: 'short',
-            day: 'numeric',
-          });
+            day: 'numeric' });
 
           points.push({
             milestone: `L${cumulativeCompleted}`,
             date: dateLabel,
             percentage: pct,
             completedCount: cumulativeCompleted,
-            lessonTitle: p.videoTitle || `Lesson ${cumulativeCompleted}`,
-          });
+            lessonTitle: p.videoTitle || `Lesson ${cumulativeCompleted}` });
         }
       });
     }
@@ -120,12 +116,11 @@ export const CourseTrendChart: React.FC<CourseTrendChartProps> = ({
         date: 'Today',
         percentage: curPct,
         completedCount: activeCourse.completedVideos || 0,
-        lessonTitle: 'Current Progress',
-      });
+        lessonTitle: 'Current Progress' });
     }
 
     return points;
-  }, [activeCourse, progressMap, cachedVideos]);
+  }, [activeCourse,  cachedVideos]);
 
   // 2. Comparative Progress Data for all tracked courses
   const comparativeCoursesData = useMemo(() => {
@@ -140,8 +135,7 @@ export const CourseTrendChart: React.FC<CourseTrendChartProps> = ({
         total: c.totalVideos || 0,
         remaining: Math.max(0, (c.totalVideos || 0) - (c.completedVideos || 0)),
         remainingFormatted: cStats.formattedRemaining,
-        color: c.id === activeId ? 'var(--accent)' : '#6366F1',
-      };
+        color: c.id === activeId ? 'var(--accent)' : '#6366F1' };
     });
   }, [courses, activeId, cachedVideos, progressMap]);
 
@@ -287,8 +281,7 @@ export const CourseTrendChart: React.FC<CourseTrendChartProps> = ({
                     {
                       name: 'Progress',
                       completed: activeCourse.percentage || 0,
-                      remaining: Math.max(0, 100 - (activeCourse.percentage || 0)),
-                    },
+                      remaining: Math.max(0, 100 - (activeCourse.percentage || 0)) },
                   ]}
                   margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
                 >

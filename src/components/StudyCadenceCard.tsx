@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import { Course, VideoProgress } from '../types';
 import {
@@ -6,13 +7,11 @@ import {
   generateCalendarCadenceDays,
   DayCadencePoint,
   formatScheduleDaysSummary,
-  getISODateOnly,
-} from '../utils/studyPlanner';
+  getISODateOnly } from '../utils/studyPlanner';
 import {
   formatTotalWatchTime,
   formatSeconds,
-  getLocalDateString,
-} from '../utils/formatters';
+  getLocalDateString } from '../utils/formatters';
 import {
   Calendar,
   ChevronLeft,
@@ -26,8 +25,7 @@ import {
   Play,
   X,
   Target,
-  Sparkles,
-} from 'lucide-react';
+  Sparkles } from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -35,18 +33,18 @@ import {
   XAxis,
   Tooltip,
   Cell,
-  ReferenceLine,
-} from 'recharts';
+  ReferenceLine } from 'recharts';
 
 export const StudyCadenceCard: React.FC = () => {
   const {
     courses,
-    progressMap,
-    stats,
-    continueLearningVideo,
+    
+    
+    
     openVideo,
-    cachedVideos,
-  } = useLearnTrack();
+    cachedVideos } = useLearnTrack();
+  const progressMap = useProgressMap();
+  const continueLearningVideo = useContinueLearningVideo();
 
   const [rangeMode, setRangeMode] = useState<7 | 14>(7);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('all');
@@ -100,14 +98,13 @@ export const StudyCadenceCard: React.FC = () => {
           map[dateStr].videos.push({
             title: p.videoTitle || 'Educational Lesson',
             courseTitle: p.courseTitle || 'Course',
-            duration: p.watchedSeconds || 0,
-          });
+            duration: p.watchedSeconds || 0 });
         }
       }
     });
 
     return map;
-  }, [progressMap]);
+  }, []);
 
   // Find currently selected course object (if not 'all')
   const selectedCourse = useMemo(() => {
@@ -688,8 +685,7 @@ export const StudyCadenceCard: React.FC = () => {
                   {selectedDayPoint.date.toLocaleDateString(undefined, {
                     month: 'long',
                     day: 'numeric',
-                    year: 'numeric',
-                  })}
+                    year: 'numeric' })}
                 </h5>
                 <p className="text-[11px] text-[var(--ink-faint)]">
                   {selectedDayPoint.isScheduled

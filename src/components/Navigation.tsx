@@ -1,4 +1,5 @@
 import React from 'react';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -13,8 +14,7 @@ import {
   Sun,
   LogIn,
   LogOut,
-  Sparkles,
-} from 'lucide-react';
+  Sparkles } from 'lucide-react';
 
 export const Navigation: React.FC = () => {
   const {
@@ -24,9 +24,9 @@ export const Navigation: React.FC = () => {
     setTheme,
     setIsSearchOpen,
     setIsAddCourseOpen,
-    continueLearningVideo,
-    openVideo,
-  } = useLearnTrack();
+    
+    openVideo } = useLearnTrack();
+  const continueLearningVideo = useContinueLearningVideo();
   const { user, signInGoogle, signOut } = useAuth();
 
   const navItems = [
@@ -264,65 +264,65 @@ export const Navigation: React.FC = () => {
       </header>
 
       {/* Mobile & Tablet Bottom Navigation Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-md py-2.5 px-4 sm:px-8 flex items-center justify-around">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-md pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] px-3 sm:px-8 flex items-center justify-around select-none">
         <button
           onClick={() => setCurrentView('dashboard')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition ${
+          className={`min-h-[44px] min-w-[54px] px-2 flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-all active:scale-95 touch-manipulation cursor-pointer ${
             currentView === 'dashboard'
-              ? 'text-[var(--accent)] font-semibold'
-              : 'text-[var(--ink-dim)]'
+              ? 'text-[var(--accent)] font-bold'
+              : 'text-[var(--ink-dim)] hover:text-[var(--ink)]'
           }`}
         >
           <LayoutDashboard className="w-4 h-4" />
-          Dashboard
+          <span>Dashboard</span>
         </button>
         <button
           onClick={() => setCurrentView('courses')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition ${
+          className={`min-h-[44px] min-w-[54px] px-2 flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-all active:scale-95 touch-manipulation cursor-pointer ${
             currentView === 'courses' ||
             currentView === 'course-detail' ||
             currentView === 'video-player'
-              ? 'text-[var(--accent)] font-semibold'
-              : 'text-[var(--ink-dim)]'
+              ? 'text-[var(--accent)] font-bold'
+              : 'text-[var(--ink-dim)] hover:text-[var(--ink)]'
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          Courses
+          <span>Courses</span>
         </button>
         <button
           onClick={() => setCurrentView('bookmarks')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition ${
+          className={`min-h-[44px] min-w-[54px] px-2 flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-all active:scale-95 touch-manipulation cursor-pointer ${
             currentView === 'bookmarks'
-              ? 'text-[var(--accent)] font-semibold'
-              : 'text-[var(--ink-dim)]'
+              ? 'text-[var(--accent)] font-bold'
+              : 'text-[var(--ink-dim)] hover:text-[var(--ink)]'
           }`}
         >
           <Bookmark className="w-4 h-4" />
-          Saved
+          <span>Saved</span>
         </button>
         <button
           onClick={() => setCurrentView('diagnostic')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition ${
+          className={`min-h-[44px] min-w-[54px] px-2 flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-all active:scale-95 touch-manipulation cursor-pointer ${
             currentView === 'diagnostic'
-              ? 'text-[var(--accent)] font-semibold'
-              : 'text-[var(--ink-dim)]'
+              ? 'text-[var(--accent)] font-bold'
+              : 'text-[var(--ink-dim)] hover:text-[var(--ink)]'
           }`}
         >
           <Activity className="w-4 h-4" />
-          Diagnostic
+          <span>Diagnostic</span>
         </button>
         <button
           onClick={() => setCurrentView('settings')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition ${
+          className={`min-h-[44px] min-w-[54px] px-2 flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-all active:scale-95 touch-manipulation cursor-pointer ${
             currentView === 'settings'
-              ? 'text-[var(--accent)] font-semibold'
-              : 'text-[var(--ink-dim)]'
+              ? 'text-[var(--accent)] font-bold'
+              : 'text-[var(--ink-dim)] hover:text-[var(--ink)]'
           }`}
         >
           <Settings className="w-4 h-4" />
-          Settings
+          <span>Settings</span>
         </button>
-      </div>
+      </nav>
     </>
   );
 };

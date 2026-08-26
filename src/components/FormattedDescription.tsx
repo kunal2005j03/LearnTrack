@@ -8,7 +8,7 @@ interface FormattedDescriptionProps {
   className?: string;
 }
 
-export const FormattedDescription: React.FC<FormattedDescriptionProps> = ({
+export const FormattedDescription: React.FC<FormattedDescriptionProps> = React.memo(({
   description,
   onSeek,
   className = '',
@@ -116,4 +116,4 @@ export const FormattedDescription: React.FC<FormattedDescriptionProps> = ({
       )}
     </div>
   );
-};
+});

@@ -1,19 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { Course, CourseVideo, CourseStudySchedule } from '../types';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import {
   getCourseRemainingTimeStats,
   formatSeconds,
-  formatEstimatedTimeRemaining,
-} from '../utils/formatters';
+  formatEstimatedTimeRemaining } from '../utils/formatters';
 import {
   calculateCourseDeadlinePacing,
   formatFriendlyDate,
   computeInitialTargetDeadline,
   calculateScheduledTargetDate,
   formatScheduleDaysSummary,
-  getScheduleWeeklyStats,
-} from '../utils/studyPlanner';
+  getScheduleWeeklyStats } from '../utils/studyPlanner';
 import { StudyScheduleModal } from './StudyScheduleModal';
 import {
   Sparkles,
@@ -31,8 +30,7 @@ import {
   Zap,
   Info,
   CalendarDays,
-  Edit3,
-} from 'lucide-react';
+  Edit3 } from 'lucide-react';
 
 interface StudyGoalCardProps {
   course: Course;
@@ -45,9 +43,9 @@ const PRESET_MINUTES = [15, 30, 45, 60, 90, 120, 180];
 export const StudyGoalCard: React.FC<StudyGoalCardProps> = ({
   course,
   videos = [],
-  compact = false,
-}) => {
-  const { progressMap, updateCourseStudyGoal, fetchAiStudyPlan } = useLearnTrack();
+  compact = false }) => {
+  const {  updateCourseStudyGoal, fetchAiStudyPlan } = useLearnTrack();
+  const progressMap = useProgressMap();
 
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showAiTips, setShowAiTips] = useState(false);
@@ -66,7 +64,7 @@ export const StudyGoalCard: React.FC<StudyGoalCardProps> = ({
     }
   }, [course.id, course.studySchedule?.dailyGoalMinutes, course.studyGoal?.dailyQuotaMinutes]);
 
-  // Compute remaining time stats
+  // Compute remaining time 
   const remainingStats = useMemo(() => {
     return getCourseRemainingTimeStats(course, videos, progressMap);
   }, [course, videos, progressMap]);
@@ -93,8 +91,7 @@ export const StudyGoalCard: React.FC<StudyGoalCardProps> = ({
     const targetDate = calculateScheduledTargetDate(new Date(), sessionsNeeded, simSchedule);
     return {
       sessionsNeeded,
-      dateFormatted: formatFriendlyDate(targetDate),
-    };
+      dateFormatted: formatFriendlyDate(targetDate) };
   }, [remainingStats.remainingSeconds, sliderValue, schedule]);
 
   // Handle slider commit (updates Firestore / local state)

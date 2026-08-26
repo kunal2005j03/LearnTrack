@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Course, CourseStudySchedule, ScheduleDay, ScheduleMode } from '../types';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import {
   ALL_SCHEDULE_DAYS,
   formatFriendlyDate,
   formatScheduleDaysSummary,
   calculateScheduledTargetDate,
-  getScheduleWeeklyStats,
-} from '../utils/studyPlanner';
+  getScheduleWeeklyStats } from '../utils/studyPlanner';
 import { getCourseRemainingTimeStats } from '../utils/formatters';
 import {
   Calendar,
@@ -18,8 +18,7 @@ import {
   Info,
   CalendarDays,
   Flame,
-  CheckCircle2,
-} from 'lucide-react';
+  CheckCircle2 } from 'lucide-react';
 
 interface StudyScheduleModalProps {
   course: Course | null;
@@ -38,9 +37,9 @@ const PRESET_GOALS = [
 export const StudyScheduleModal: React.FC<StudyScheduleModalProps> = ({
   course,
   isOpen,
-  onClose,
-}) => {
-  const { updateCourseStudySchedule, cachedVideos, progressMap } = useLearnTrack();
+  onClose }) => {
+  const { updateCourseStudySchedule, cachedVideos } = useLearnTrack();
+  const progressMap = useProgressMap();
 
   const [mode, setMode] = useState<ScheduleMode>('custom');
   const [selectedDays, setSelectedDays] = useState<ScheduleDay[]>(['Sat', 'Sun']);
@@ -68,7 +67,7 @@ export const StudyScheduleModal: React.FC<StudyScheduleModalProps> = ({
     }
   }, [isOpen, course]);
 
-  // Compute remaining stats for this course
+  // Compute remaining for this course
   const remainingStats = useMemo(() => {
     if (!course) return null;
     return getCourseRemainingTimeStats(course, cachedVideos[course.id], progressMap);
@@ -79,8 +78,7 @@ export const StudyScheduleModal: React.FC<StudyScheduleModalProps> = ({
     return {
       mode,
       customDays: selectedDays,
-      dailyGoalMinutes,
-    };
+      dailyGoalMinutes };
   }, [mode, selectedDays, dailyGoalMinutes]);
 
   // Dynamic projected deadline simulation
@@ -92,8 +90,7 @@ export const StudyScheduleModal: React.FC<StudyScheduleModalProps> = ({
     const targetDate = calculateScheduledTargetDate(new Date(), sessionsNeeded, tempSchedule);
     return {
       formatted: formatFriendlyDate(targetDate),
-      sessionsNeeded,
-    };
+      sessionsNeeded };
   }, [remainingStats, dailyGoalMinutes, tempSchedule]);
 
   // Weekly stats
@@ -127,8 +124,7 @@ export const StudyScheduleModal: React.FC<StudyScheduleModalProps> = ({
         mode,
         customDays: mode === 'custom' ? selectedDays : mode === 'daily' ? ALL_SCHEDULE_DAYS : [],
         dailyGoalMinutes,
-        updatedAt: new Date().toISOString(),
-      };
+        updatedAt: new Date().toISOString() };
       await updateCourseStudySchedule(course.id, scheduleToSave);
       onClose();
     } catch (e) {

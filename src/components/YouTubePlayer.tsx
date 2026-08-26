@@ -173,12 +173,18 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = React.memo(({
         const dur = playerRef.current.getDuration() || 0;
         const pct = dur > 0 ? Math.min(100, Math.round((cur / dur) * 1000) / 10) : 0;
 
-        setPlayerState((prev) => ({
-          ...prev,
-          currentTime: cur,
-          duration: dur,
-          percentage: pct,
-        }));
+        setPlayerState((prev) => {
+          // Avoid unnecessary re-renders if values haven't meaningfully changed
+          if (Math.abs(prev.currentTime - cur) < 0.15 && prev.duration === dur && prev.status === 'PLAYING') {
+            return prev;
+          }
+          return {
+            ...prev,
+            currentTime: cur,
+            duration: dur,
+            percentage: pct,
+          };
+        });
 
         if (onProgressRef.current) {
           onProgressRef.current(cur, dur, pct);
@@ -186,7 +192,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = React.memo(({
       } catch (e) {
         // Player might be switching or unmounting
       }
-    }, 400); // 400ms polling for smooth responsive UI
+    }, 250); // 250ms polling (4 times/second) for optimal balance of responsiveness and low mobile CPU load
 
     // Periodic 5-second database save timer while playing
     if (saveTimerRef.current) clearInterval(saveTimerRef.current);

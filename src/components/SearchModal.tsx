@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import { Search, X, BookOpen, PlayCircle, ArrowRight } from 'lucide-react';
 import { formatSeconds } from '../utils/formatters';
 
 export const SearchModal: React.FC = () => {
-  const { isSearchOpen, setIsSearchOpen, courses, cachedVideos, progressMap, openCourse, openVideo } =
+  const { isSearchOpen, setIsSearchOpen, courses, cachedVideos,  openCourse, openVideo } =
     useLearnTrack();
+  const progressMap = useProgressMap();
   const [query, setQuery] = useState('');
 
   // Keyboard shortcut listener ⌘K / Ctrl+K / Escape
@@ -48,17 +50,15 @@ export const SearchModal: React.FC = () => {
             courseId: cId,
             courseTitle: course?.title || 'Course',
             video: v,
-            progress: progressMap[v.id],
-          });
+            progress: [v.id] });
         }
       });
     });
 
     return {
       matchingCourses: matchingCourses.slice(0, 5),
-      matchingVideos: matchingVideos.slice(0, 10),
-    };
-  }, [query, courses, cachedVideos, progressMap]);
+      matchingVideos: matchingVideos.slice(0, 10) };
+  }, [query, courses, cachedVideos, ]);
 
   if (!isSearchOpen) return null;
 

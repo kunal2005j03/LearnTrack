@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { playerProgressStore } from '../utils/playerProgress';
 import { YouTubeChapter } from '../types';
 import {
   X,
@@ -19,7 +21,7 @@ import {
 export interface InThisVideoPanelProps {
   chapters: YouTubeChapter[];
   chapterSource: 'creator' | 'youtube_auto' | 'ai_generated' | 'none';
-  currentTime: number;
+  currentTime?: number;
   duration: number;
   videoId: string;
   videoTitle?: string;
@@ -51,6 +53,20 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
   className = '',
   hideHeader = false,
 }) => {
+  const [localTime, setLocalTime] = useState(currentTime || 0);
+  useEffect(() => {
+    if (currentTime !== undefined) {
+      setLocalTime(currentTime);
+      return;
+    }
+    setLocalTime(playerProgressStore.currentTime);
+    return playerProgressStore.subscribeThrottled((cur) => {
+      setLocalTime(cur);
+    }, 500);
+  }, [currentTime]);
+  
+  const effectiveTime = localTime;
+
   const [activeTab, setActiveTab] = useState<'chapters' | 'transcript'>('chapters');
   const [copied, setCopied] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -60,40 +76,48 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
 
   const activeChapterRef = useRef<HTMLButtonElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const isHoveredRef = useRef(false);
   const lastScrolledChapterRef = useRef<number | null>(null);
 
   // Current active chapter based on currentTime
-  const activeChapter = useMemo(() => {
-    if (!chapters || chapters.length === 0) return null;
-    return (
-      chapters.find((ch) => currentTime >= ch.startSeconds && currentTime < ch.endSeconds) ||
-      (currentTime >= chapters[chapters.length - 1]?.startSeconds ? chapters[chapters.length - 1] : chapters[0])
-    );
-  }, [chapters, currentTime]);
+  const activeChapterIndex = useMemo(() => {
+    if (!chapters || chapters.length === 0) return -1;
+    const idx = chapters.findIndex((ch) => effectiveTime >= ch.startSeconds && effectiveTime < ch.endSeconds);
+    if (idx !== -1) return idx;
+    return effectiveTime >= chapters[chapters.length - 1]?.startSeconds ? chapters.length - 1 : 0;
+  }, [chapters, effectiveTime]);
+  const activeChapter = activeChapterIndex >= 0 ? chapters[activeChapterIndex] : null;
+
+  const chapterVirtualizer = useVirtualizer({
+    count: chapters.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 100,
+    overscan: 5,
+  });
+
+
 
   // Auto-scroll active chapter into view ONLY when chapter changes, non-blocking via requestAnimationFrame
   useEffect(() => {
-    const currentStart = activeChapter?.startSeconds ?? null;
     if (
       activeTab === 'chapters' &&
-      currentStart !== null &&
-      currentStart !== lastScrolledChapterRef.current &&
-      activeChapterRef.current &&
+      activeChapterIndex >= 0 &&
+      activeChapterIndex !== lastScrolledChapterRef.current &&
       !isHoveredRef.current
     ) {
-      lastScrolledChapterRef.current = currentStart;
+      lastScrolledChapterRef.current = activeChapterIndex;
       requestAnimationFrame(() => {
         try {
-          activeChapterRef.current?.scrollIntoView({
-            block: 'nearest',
+          chapterVirtualizer.scrollToIndex(activeChapterIndex, {
+            align: 'center',
             behavior: 'smooth',
           });
         } catch {}
       });
     }
-  }, [activeChapter?.startSeconds, activeTab]);
+  }, [activeChapterIndex, activeTab, chapterVirtualizer]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -183,6 +207,16 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
       (t) => t.text.toLowerCase().includes(q) || t.formattedStart.toLowerCase().includes(q)
     );
   }, [transcripts, transcriptSearch]);
+
+  const transcriptVirtualizer = useVirtualizer({
+    count: filteredTranscript.length,
+    getScrollElement: () => transcriptScrollRef.current,
+    estimateSize: () => 80,
+    overscan: 10,
+  });
+
+
+
 
   if (!isOpen) return null;
 
@@ -328,7 +362,7 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
           onTouchEnd={() => {
             setTimeout(() => { isHoveredRef.current = false; }, 2000);
           }}
-          className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2.5 sm:p-3.5 space-y-3 scroll-smooth touch-pan-y pb-36"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2.5 sm:p-3.5 scroll-smooth touch-pan-y pb-36"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {chapters.length === 0 ? (
@@ -341,14 +375,27 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
             </div>
           ) : (
             <>
-              {chapters.map((ch, idx) => {
-                const isCurrent = activeChapter?.startSeconds === ch.startSeconds;
+            <div style={{ height: `${chapterVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+              {chapterVirtualizer.getVirtualItems().map((virtualItem) => {
+                const ch = chapters[virtualItem.index];
+                const isCurrent = activeChapterIndex === virtualItem.index;
                 const thumbUrl = ch.thumbnailUrl || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
 
                 return (
+                  <div
+                    key={virtualItem.key}
+                    data-index={virtualItem.index}
+                    ref={chapterVirtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualItem.start}px)`,
+                      paddingBottom: '12px',
+                    }}
+                  >
                   <button
-                    key={`${ch.startSeconds}-${idx}`}
-                    ref={isCurrent ? activeChapterRef : null}
                     type="button"
                     onClick={() => onSeekTo(ch.startSeconds)}
                     className={`w-full text-left p-2.5 rounded-xl flex items-center gap-3 transition-all group relative border cursor-pointer shrink-0 ${
@@ -424,10 +471,12 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
                       </div>
                     </div>
                   </button>
+                  </div>
                 );
               })}
-              {/* Trailing spacer to ensure the last chapter item is always fully visible upon scroll */}
-              <div className="h-24 sm:h-28 shrink-0 w-full select-none pointer-events-none" aria-hidden="true" />
+            </div>
+            {/* Trailing spacer to ensure the last chapter item is always fully visible upon scroll */}
+            <div className="h-24 sm:h-28 shrink-0 w-full select-none pointer-events-none" aria-hidden="true" />
             </>
           )}
         </div>
@@ -451,7 +500,7 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
           </div>
 
           {/* Transcript Lines List */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-2 touch-pan-y pb-16">
+          <div ref={transcriptScrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 touch-pan-y pb-16">
             {loadingTranscript ? (
               <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-400 space-y-2">
                 <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
@@ -462,11 +511,26 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
                 {transcriptSearch ? 'No matching transcript lines found.' : 'No transcript available.'}
               </div>
             ) : (
-              filteredTranscript.map((t, idx) => {
-                const isActive = currentTime >= t.startSeconds && (idx === filteredTranscript.length - 1 || currentTime < filteredTranscript[idx + 1].startSeconds);
+              <>
+              <div style={{ height: `${transcriptVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+              {transcriptVirtualizer.getVirtualItems().map((virtualItem) => {
+                const t = filteredTranscript[virtualItem.index];
+                const isActive = effectiveTime >= t.startSeconds && (virtualItem.index === filteredTranscript.length - 1 || effectiveTime < filteredTranscript[virtualItem.index + 1].startSeconds);
                 return (
+                  <div
+                    key={virtualItem.key}
+                    data-index={virtualItem.index}
+                    ref={transcriptVirtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualItem.start}px)`,
+                      paddingBottom: '8px',
+                    }}
+                  >
                   <button
-                    key={`${t.startSeconds}-${idx}`}
                     type="button"
                     onClick={() => onSeekTo(t.startSeconds)}
                     className={`w-full text-left p-2.5 rounded-xl transition-all flex items-start gap-3 group border cursor-pointer ${
@@ -482,8 +546,11 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
                       {t.text}
                     </p>
                   </button>
+                  </div>
                 );
-              })
+              })}
+              </div>
+              </>
             )}
             <div className="h-20 shrink-0 w-full select-none pointer-events-none" aria-hidden="true" />
           </div>

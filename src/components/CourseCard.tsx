@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Course, VideoProgress } from '../types';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import {
   Bookmark,
@@ -13,8 +14,7 @@ import {
   Sparkles,
   AlertTriangle,
   Award,
-  CalendarDays,
-} from 'lucide-react';
+  CalendarDays } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { getCourseRemainingTimeStats, formatTotalWatchTime } from '../utils/formatters';
 import { calculateCourseDeadlinePacing } from '../utils/studyPlanner';
@@ -25,11 +25,12 @@ interface CourseCardProps {
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
-  const { openCourse, toggleCourseBookmark, deleteCourse, progressMap, cachedVideos } = useLearnTrack();
+  const { openCourse, toggleCourseBookmark, deleteCourse,  cachedVideos } = useLearnTrack();
+  const progressMap = useProgressMap();
   const [showMenu, setShowMenu] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
-  // Compute exact unwatched videos duration & remaining time stats
+  // Compute exact unwatched videos duration & remaining time 
   const remainingStats = useMemo(() => {
     return getCourseRemainingTimeStats(course, cachedVideos[course.id], progressMap);
   }, [course, cachedVideos, progressMap]);
@@ -59,8 +60,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
         count++;
         data.push({
           point: idx + 1,
-          pct: Math.min(100, Math.round((count / total) * 100)),
-        });
+          pct: Math.min(100, Math.round((count / total) * 100)) });
       }
     });
 
@@ -74,7 +74,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
     }
 
     return data;
-  }, [course, progressMap]);
+  }, [course, ]);
 
   return (
     <>

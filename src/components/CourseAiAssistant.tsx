@@ -2,6 +2,7 @@ import { Paperclip, Upload, ClipboardPaste, Crop } from "lucide-react";
 import { ImageCropper } from "./ImageCropper";
 import { AiAttachment } from "../types";
 import React, { useState, useEffect, useRef } from 'react';
+import { playerProgressStore } from '../utils/playerProgress';
 import {
   Brain,
   Send,
@@ -42,7 +43,7 @@ import { AiMarkdownMessage } from './AiMarkdownMessage';
 interface CourseAiAssistantProps {
   course: Course;
   currentVideo: CourseVideo;
-  currentTimeSeconds: number;
+  currentTimeSeconds?: number;
   currentChapter?: YouTubeChapter | null;
   chapters?: YouTubeChapter[];
   completedVideoIds?: string[];
@@ -53,7 +54,7 @@ interface CourseAiAssistantProps {
   onClose?: () => void;
 }
 
-export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
+export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
   course,
   currentVideo,
   currentTimeSeconds,
@@ -66,6 +67,18 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
   onClearDoubtContext,
   onClose,
 }) => {
+  const [localTime, setLocalTime] = useState(currentTimeSeconds || 0);
+  useEffect(() => {
+    if (currentTimeSeconds !== undefined) {
+      setLocalTime(currentTimeSeconds);
+      return;
+    }
+    setLocalTime(playerProgressStore.currentTime);
+    return playerProgressStore.subscribeThrottled((cur) => setLocalTime(cur), 1000);
+  }, [currentTimeSeconds]);
+  
+  const effectiveTimeSeconds = localTime;
+
   const storageKey = `learntrack_course_ai_memory_${course.id || course.playlistId || 'default'}`;
   const terminalNavKey = `learntrack_terminal_nav_${course.id || course.playlistId || 'default'}`;
   const timelineKey = `learntrack_selected_timeline_${course.id || course.playlistId || 'default'}`;
@@ -200,11 +213,11 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
     return formatSeconds(secs);
   };
 
-  const formattedCurrentTime = formatTime(currentTimeSeconds);
+  const formattedCurrentTime = formatTime(effectiveTimeSeconds);
   const activeChapter = propCurrentChapter || chapters.find(
     (ch) =>
-      currentTimeSeconds >= ch.startSeconds &&
-      (ch.endSeconds ? currentTimeSeconds < ch.endSeconds : true)
+      effectiveTimeSeconds >= ch.startSeconds &&
+      (ch.endSeconds ? effectiveTimeSeconds < ch.endSeconds : true)
   );
 
   // Synchronize timeline state across components and storage
@@ -491,7 +504,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
         dataUrl,
         videoId: currentVideo.id,
         videoTitle: currentVideo.title,
-        timestampSeconds: currentTimeSeconds,
+        timestampSeconds: effectiveTimeSeconds,
         timestampFormatted: formattedCurrentTime,
       };
       setAttachments(prev => [...prev, newAttachment]);
@@ -572,7 +585,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
       attachments: currentAttachments.length > 0 ? currentAttachments : undefined,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       actionType,
-      videoTimestampSeconds: doubtContext ? doubtContext.timestampSeconds : currentTimeSeconds,
+      videoTimestampSeconds: doubtContext ? doubtContext.timestampSeconds : effectiveTimeSeconds,
       videoTimestampFormatted: activeTimelapse ? `${activeTimelapse.startFormatted} - ${activeTimelapse.endFormatted}` : (doubtContext ? doubtContext.timestampFormatted : formattedCurrentTime),
       videoTitle: currentVideo.title,
     };
@@ -622,7 +635,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
             channelTitle: currentVideo.channelTitle,
             description: currentVideo.description,
             durationFormatted: currentVideo.durationFormatted,
-            currentTimestampSeconds: currentTimeSeconds,
+            currentTimestampSeconds: effectiveTimeSeconds,
             currentTimestampFormatted: formattedCurrentTime,
             selectedTimeline: activeTimelapse,
             currentChapter: activeChapter ? {
@@ -1515,7 +1528,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
               dataUrl: croppedDataUrl,
               videoId: currentVideo.id,
               videoTitle: currentVideo.title,
-              timestampSeconds: currentTimeSeconds,
+              timestampSeconds: effectiveTimeSeconds,
               timestampFormatted: formattedCurrentTime,
             };
             
@@ -1533,4 +1546,4 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = ({
       )}
     </div>
   );
-};
+});

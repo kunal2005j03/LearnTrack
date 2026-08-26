@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import {
   Flame,
@@ -6,17 +7,17 @@ import {
   Award,
   Sparkles,
   Play,
-  ChevronRight,
-} from 'lucide-react';
+  ChevronRight } from 'lucide-react';
 import {
   formatTotalWatchTime,
   calculateStreaks,
-  getNextStreakMilestone,
-} from '../utils/formatters';
+  getNextStreakMilestone } from '../utils/formatters';
 import { StudyCadenceCard } from './StudyCadenceCard';
 
 export const StreakCard: React.FC = () => {
-  const { stats, continueLearningVideo, openVideo, courses, cachedVideos } = useLearnTrack();
+  const {   openVideo, courses, cachedVideos } = useLearnTrack();
+  const stats = useStats();
+  const continueLearningVideo = useContinueLearningVideo();
 
   // Compute streak details from active dates
   const streakDetails = useMemo(() => {

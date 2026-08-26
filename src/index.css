@@ -35,10 +35,15 @@
     background-color: var(--bg);
     color: var(--ink);
     -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button, a, input, select, textarea {
+    touch-action: manipulation;
   }
 }
 
-/* Ambient glow */
+/* Ambient glow - hardware accelerated on desktop, disabled on mobile for zero GPU scroll stutter */
 .ambient-glow {
   position: fixed;
   top: 20%;
@@ -49,6 +54,14 @@
   z-index: 0;
   filter: blur(60px);
   pointer-events: none;
+  contain: strict;
+  transform: translateZ(0);
+}
+
+@media (max-width: 768px) {
+  .ambient-glow {
+    display: none;
+  }
 }
 
 /* Custom scrollbar */

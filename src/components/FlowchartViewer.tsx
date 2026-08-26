@@ -41,7 +41,7 @@ function parseMermaidNodes(mermaidText: string) {
   return uniqueSteps;
 }
 
-export const FlowchartViewer: React.FC<FlowchartViewerProps> = ({
+export const FlowchartViewer: React.FC<FlowchartViewerProps> = React.memo(({
   mermaidCode = '',
   title = 'Algorithmic Flowchart',
 }) => {
@@ -188,4 +188,4 @@ export const FlowchartViewer: React.FC<FlowchartViewerProps> = ({
       )}
     </div>
   );
-};
+});

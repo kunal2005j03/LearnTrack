@@ -9,8 +9,8 @@ import {
   query,
   orderBy,
   onSnapshot,
-  where,
-} from 'firebase/firestore';
+  where } from 'firebase/firestore';
+import { progressStore } from "../store/progressStore";
 import { db } from '../lib/firebase';
 import { useAuth } from './AuthContext';
 import {
@@ -21,8 +21,7 @@ import {
   ThemeMode,
   AiStudyPlanRecommendation,
   CourseStudyGoal,
-  CourseStudySchedule,
-} from '../types';
+  CourseStudySchedule } from '../types';
 import { calculateStreaks, getLocalDateString } from '../utils/formatters';
 import { createDefaultStudyGoal, computeInitialTargetDeadline, getISODateOnly } from '../utils/studyPlanner';
 
@@ -33,8 +32,6 @@ interface LearnTrackContextType {
 
   // Data
   courses: Course[];
-  progressMap: Record<string, VideoProgress>; // videoId -> VideoProgress
-  stats: UserStats;
   loading: boolean;
   activeCourseId: string | null;
   activeVideoId: string | null;
@@ -82,8 +79,6 @@ interface LearnTrackContextType {
   getVideoProgress: (videoId: string) => VideoProgress | undefined;
 
   // Derived sections
-  continueLearningVideo: { course: Course; video: CourseVideo; progress: VideoProgress } | null;
-  recentlyWatchedList: Array<{ course?: Course; video?: CourseVideo; progress: VideoProgress }>;
   bookmarkedCourses: Course[];
   bookmarkedVideos: Array<{ course?: Course; video: CourseVideo }>;
 
@@ -145,17 +140,6 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Data states
   const [courses, setCourses] = useState<Course[]>([]);
   const [cachedVideos, setCachedVideos] = useState<Record<string, CourseVideo[]>>({});
-  const [progressMap, setProgressMap] = useState<Record<string, VideoProgress>>({});
-  const [stats, setStats] = useState<UserStats>({
-    totalCourses: 0,
-    completedVideos: 0,
-    totalWatchSeconds: 0,
-    overallProgress: 0,
-    currentStreak: 0,
-    bestStreak: 0,
-    lastActiveDate: '',
-    activeDates: [],
-  });
   const [loading, setLoading] = useState<boolean>(true);
 
   // Keep live refs to avoid stale closures & unnecessary callback recreations
@@ -165,8 +149,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const cachedVideosRef = useRef(cachedVideos);
   cachedVideosRef.current = cachedVideos;
 
-  const progressMapRef = useRef(progressMap);
-  progressMapRef.current = progressMap;
+  
 
   const userRef = useRef(user);
   userRef.current = user;
@@ -175,6 +158,85 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   userIdRef.current = userId;
 
   const statsSyncTimerRef = useRef<any>(null);
+
+  // Recalculate Course percentages and Stats dynamically when or courses change
+  useEffect(() => {
+    if (!user) return;
+    const unsub = progressStore.subscribe(() => {
+      let completedVideoCount = 0;
+      let totalWatchSec = 0;
+      const currentStats = progressStore.getStats() || { activeDates: [], totalCourses: 0, completedVideos: 0, totalWatchSeconds: 0, overallProgress: 0 };
+      const activeDateSet = new Set<string>(currentStats.activeDates || []);
+
+      const pMap = progressStore.getSnapshot();
+      (Object.values(pMap) as VideoProgress[]).forEach((p) => {
+        if (p.completed) {
+          completedVideoCount++;
+        }
+        totalWatchSec += p.watchedSeconds || 0;
+        if (p.lastWatchedAt && (p.watchedSeconds > 0 || p.completed)) {
+          try {
+            const d = new Date(p.lastWatchedAt);
+            if (!isNaN(d.getTime())) {
+              activeDateSet.add(getLocalDateString(d));
+            } else if (p.lastWatchedAt.length >= 10) {
+              activeDateSet.add(p.lastWatchedAt.substring(0, 10));
+            }
+          } catch {
+            if (p.lastWatchedAt.length >= 10) {
+              activeDateSet.add(p.lastWatchedAt.substring(0, 10));
+            }
+          }
+        }
+      });
+
+      const activeDatesArray = Array.from(activeDateSet);
+      const streakInfo = calculateStreaks(activeDatesArray);
+
+      let totalCoursesVideos = 0;
+      courses.forEach((c) => {
+        totalCoursesVideos += c.totalVideos || 0;
+      });
+
+      const overallPct =
+        totalCoursesVideos > 0 ? Math.round((completedVideoCount / totalCoursesVideos) * 100) : 0;
+
+      const newStats: UserStats = {
+        totalCourses: courses.length,
+        completedVideos: completedVideoCount,
+        totalWatchSeconds: totalWatchSec,
+        overallProgress: Math.min(100, overallPct),
+        currentStreak: streakInfo.current,
+        bestStreak: streakInfo.best,
+        lastActiveDate: activeDatesArray.sort().pop() || '',
+        activeDates: activeDatesArray };
+
+      // Only update if something meaningfully changed
+      if (
+        newStats.totalWatchSeconds !== currentStats.totalWatchSeconds ||
+        newStats.completedVideos !== currentStats.completedVideos ||
+        newStats.totalCourses !== currentStats.totalCourses
+      ) {
+        progressStore.setStats(newStats);
+        
+        // Update document in Firestore DEBOUNCED to avoid rapid write bursts
+        if (statsSyncTimerRef.current) {
+          clearTimeout(statsSyncTimerRef.current);
+        }
+        statsSyncTimerRef.current = setTimeout(() => {
+          setDoc(doc(db, `users/${user.uid}/stats/overview`), newStats, { merge: true }).catch((e) =>
+            console.warn('Failed to sync to Firestore:', e)
+          );
+        }, 8000);
+      }
+    });
+
+    // Run once on mount / deps change
+    progressStore.update('trigger', progressStore.getSnapshot()['trigger'] || ({} as any));
+
+    return unsub;
+  }, [courses.length, user]);
+
   const progressFirestoreThrottleRef = useRef<Record<string, number>>({});
   const localStorageProgSaveTimerRef = useRef<any>(null);
 
@@ -195,7 +257,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       const storedProgress = localStorage.getItem(`${LOCAL_STORAGE_PROGRESS_KEY}_${userId}`);
       if (storedProgress) {
-        setProgressMap(JSON.parse(storedProgress));
+        progressStore.set(JSON.parse(storedProgress));
       }
       const storedVideos = localStorage.getItem(`${LOCAL_STORAGE_VIDEOS_KEY}_${userId}`);
       if (storedVideos) {
@@ -203,7 +265,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       const storedStats = localStorage.getItem(`${LOCAL_STORAGE_STATS_KEY}_${userId}`);
       if (storedStats) {
-        setStats(JSON.parse(storedStats));
+        progressStore.setStats(JSON.parse(storedStats));
       }
     } catch (e) {
       console.warn('Could not read from local storage:', e);
@@ -282,7 +344,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
 
         // Check if there is an actual difference before triggering state update
-        const currentMap = progressMapRef.current;
+        const currentMap = progressStore.getSnapshot();
         let hasDiff = Object.keys(pMap).length !== Object.keys(currentMap).length;
         if (!hasDiff) {
           for (const key of Object.keys(pMap)) {
@@ -296,7 +358,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
 
         if (hasDiff) {
-          setProgressMap(pMap);
+          progressStore.set(pMap);
           if (localStorageProgSaveTimerRef.current) {
             clearTimeout(localStorageProgSaveTimerRef.current);
           }
@@ -319,24 +381,23 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       (docSnap) => {
         if (docSnap.exists()) {
           const loadedStats = docSnap.data() as UserStats;
-          setStats((prev) => {
-            if (
-              prev.completedVideos === loadedStats.completedVideos &&
-              prev.overallProgress === loadedStats.overallProgress &&
-              prev.currentStreak === loadedStats.currentStreak &&
-              Math.abs(prev.totalWatchSeconds - loadedStats.totalWatchSeconds) < 5
-            ) {
-              return prev;
-            }
-            try {
-              localStorage.setItem(`${LOCAL_STORAGE_STATS_KEY}_${user.uid}`, JSON.stringify(loadedStats));
-            } catch {}
-            return loadedStats;
-          });
+          const prev = progressStore.getStats() || { activeDates: [], totalCourses: 0, completedVideos: 0, totalWatchSeconds: 0, overallProgress: 0 } as any;
+          if (
+            prev.completedVideos === loadedStats.completedVideos &&
+            prev.overallProgress === loadedStats.overallProgress &&
+            prev.currentStreak === loadedStats.currentStreak &&
+            Math.abs(prev.totalWatchSeconds - loadedStats.totalWatchSeconds) < 5
+          ) {
+            return;
+          }
+          try {
+            localStorage.setItem(`${LOCAL_STORAGE_STATS_KEY}_${user.uid}`, JSON.stringify(loadedStats));
+          } catch {}
+          progressStore.setStats(loadedStats);
         }
       },
       (error) => {
-        console.error('Firestore stats snapshot error:', error);
+        console.error('Firestore snapshot error:', error);
       }
     );
 
@@ -349,69 +410,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [user]);
 
-  // Recalculate Course percentages and Stats dynamically when progressMap or courses change
-  useEffect(() => {
-    let completedVideoCount = 0;
-    let totalWatchSec = 0;
-    const activeDateSet = new Set<string>(stats.activeDates || []);
 
-    (Object.values(progressMap) as VideoProgress[]).forEach((p) => {
-      if (p.completed) {
-        completedVideoCount++;
-      }
-      totalWatchSec += p.watchedSeconds || 0;
-      if (p.lastWatchedAt && (p.watchedSeconds > 0 || p.completed)) {
-        try {
-          const d = new Date(p.lastWatchedAt);
-          if (!isNaN(d.getTime())) {
-            activeDateSet.add(getLocalDateString(d));
-          } else if (p.lastWatchedAt.length >= 10) {
-            activeDateSet.add(p.lastWatchedAt.substring(0, 10));
-          }
-        } catch {
-          if (p.lastWatchedAt.length >= 10) {
-            activeDateSet.add(p.lastWatchedAt.substring(0, 10));
-          }
-        }
-      }
-    });
-
-    const activeDatesArray = Array.from(activeDateSet);
-    const streakInfo = calculateStreaks(activeDatesArray);
-
-    let totalCoursesVideos = 0;
-    courses.forEach((c) => {
-      totalCoursesVideos += c.totalVideos || 0;
-    });
-
-    const overallPct =
-      totalCoursesVideos > 0 ? Math.round((completedVideoCount / totalCoursesVideos) * 100) : 0;
-
-    const newStats: UserStats = {
-      totalCourses: courses.length,
-      completedVideos: completedVideoCount,
-      totalWatchSeconds: totalWatchSec,
-      overallProgress: Math.min(100, overallPct),
-      currentStreak: streakInfo.current,
-      bestStreak: streakInfo.best,
-      lastActiveDate: activeDatesArray.sort().pop() || '',
-      activeDates: activeDatesArray,
-    };
-
-    setStats(newStats);
-
-    // Update stats document in Firestore DEBOUNCED to avoid rapid write bursts
-    if (user) {
-      if (statsSyncTimerRef.current) {
-        clearTimeout(statsSyncTimerRef.current);
-      }
-      statsSyncTimerRef.current = setTimeout(() => {
-        setDoc(doc(db, `users/${user.uid}/stats/overview`), newStats, { merge: true }).catch((e) =>
-          console.warn('Failed to sync stats to Firestore:', e)
-        );
-      }, 8000);
-    }
-  }, [progressMap, courses.length, user]);
 
   // Navigation Helpers
   const setActiveVideo = (courseId: string | null, videoId: string | null) => {
@@ -481,16 +480,14 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const response = await fetch('/api/youtube/playlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: urlOrId }),
-      });
+        body: JSON.stringify({ url: urlOrId }) });
 
       const data = await response.json();
 
       if (!response.ok || data.error) {
         return {
           success: false,
-          error: data.error || 'Failed to import playlist. Please check that the URL is public and valid.',
-        };
+          error: data.error || 'Failed to import playlist. Please check that the URL is public and valid.' };
       }
 
       const courseId = data.playlistId;
@@ -510,8 +507,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           percentage: 0,
           totalDurationSeconds: totalSec,
           createdAt: now,
-          updatedAt: now,
-        },
+          updatedAt: now },
         60
       );
 
@@ -529,8 +525,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isBookmarked: false,
         studyGoal: defaultGoal,
         createdAt: now,
-        updatedAt: now,
-      };
+        updatedAt: now };
 
       const courseVideos: CourseVideo[] = data.videos.map((v: any) => ({
         id: v.id,
@@ -542,8 +537,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         position: v.position,
         durationSeconds: v.durationSeconds,
         durationFormatted: v.durationFormatted,
-        isBookmarked: false,
-      }));
+        isBookmarked: false }));
 
       // Update state immediately
       setCourses((prev) => {
@@ -579,8 +573,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.error('Playlist import network error:', err);
       return {
         success: false,
-        error: err?.message || 'Network error occurred while importing playlist.',
-      };
+        error: err?.message || 'Network error occurred while importing playlist.' };
     }
   };
 
@@ -689,14 +682,12 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             initialTargetDeadline: initialTargetDeadline!,
             initialTotalDays: initialTotalDays || Math.max(1, Math.ceil((c.totalDurationSeconds || 3600) / 60 / quotaMins)),
             aiRecommendation: aiRecommendation || currentGoal?.aiRecommendation,
-            updatedAt: now,
-          };
+            updatedAt: now };
 
           const updatedCourse: Course = {
             ...c,
             studyGoal: updatedGoal,
-            updatedAt: now,
-          };
+            updatedAt: now };
 
           // Save to Firestore if signed in
           if (user) {
@@ -739,15 +730,13 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             initialTotalDays: deadlineCalc.totalDays,
             schedule,
             aiRecommendation: currentGoal?.aiRecommendation,
-            updatedAt: now,
-          };
+            updatedAt: now };
 
           const updatedCourse: Course = {
             ...c,
             studyGoal: updatedGoal,
             studySchedule: schedule,
-            updatedAt: now,
-          };
+            updatedAt: now };
 
           if (user) {
             setDoc(doc(db, `users/${user.uid}/courses/${courseId}`), updatedCourse, { merge: true }).catch(console.warn);
@@ -785,9 +774,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           description: course.description,
           totalVideos: course.totalVideos,
           totalDurationSeconds: course.totalDurationSeconds,
-          videoSampleTitles: sampleTitles,
-        }),
-      });
+          videoSampleTitles: sampleTitles }) });
 
       const data = await resp.json();
       if (!resp.ok && !data.recommendedDailyHours) {
@@ -806,8 +793,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           'Practice exercises alongside video lessons.',
         ],
         isFallback: data.isFallback,
-        generatedAt: new Date().toISOString(),
-      };
+        generatedAt: new Date().toISOString() };
 
       // Save recommendation to course
       await updateCourseStudyGoal(course.id, rec.recommendedDailyMinutes, rec, false);
@@ -831,7 +817,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (!videoId || durationSeconds <= 0 || isNaN(watchedSeconds)) return;
 
       const pct = Math.min(100, Math.round((watchedSeconds / durationSeconds) * 1000) / 10);
-      const existing = progressMapRef.current[videoId];
+      const existing = progressStore.getSnapshot()[videoId];
 
       // Video auto-completes if >= 90% or if forceCompleted or if previously completed
       const isCompleted = forceCompleted || (existing?.completed ?? false) || pct >= 90.0;
@@ -871,22 +857,18 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         percentage: pct,
         completed: isCompleted,
         lastWatchedAt: now,
-        updatedAt: now,
-      };
+        updatedAt: now };
 
       // Optimistic local state update
-      setProgressMap((prev) => {
-        const nextMap = { ...prev, [videoId]: progressRecord };
-        if (localStorageProgSaveTimerRef.current) {
-          clearTimeout(localStorageProgSaveTimerRef.current);
-        }
-        localStorageProgSaveTimerRef.current = setTimeout(() => {
-          try {
-            localStorage.setItem(`${LOCAL_STORAGE_PROGRESS_KEY}_${curUserId}`, JSON.stringify(nextMap));
-          } catch {}
-        }, 2000);
-        return nextMap;
-      });
+      progressStore.update(videoId, progressRecord);
+      if (localStorageProgSaveTimerRef.current) {
+        clearTimeout(localStorageProgSaveTimerRef.current);
+      }
+      localStorageProgSaveTimerRef.current = setTimeout(() => {
+        try {
+          localStorage.setItem(`${LOCAL_STORAGE_PROGRESS_KEY}_${curUserId}`, JSON.stringify(progressStore.getSnapshot()));
+        } catch {}
+      }, 2000);
 
       // Update course's completed video count
       setCourses((prev) => {
@@ -895,7 +877,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const vids = curCachedVids[courseId] || [];
             let compCount = 0;
             vids.forEach((v) => {
-              const p = v.id === videoId ? progressRecord : progressMapRef.current[v.id];
+              const p = v.id === videoId ? progressRecord : progressStore.getSnapshot()[v.id];
               if (p?.completed) compCount++;
             });
             const cPct = c.totalVideos > 0 ? Math.round((compCount / c.totalVideos) * 100) : 0;
@@ -903,8 +885,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               ...c,
               completedVideos: compCount,
               percentage: cPct,
-              updatedAt: now,
-            };
+              updatedAt: now };
           }
           return c;
         });
@@ -933,7 +914,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     async (courseId: string, videoId: string, completed: boolean) => {
       const curUserId = userIdRef.current;
       const curUser = userRef.current;
-      const existing = progressMapRef.current[videoId];
+      const existing = progressStore.getSnapshot()[videoId];
       const course = coursesRefState.current.find((c) => c.id === courseId);
       const videoList = cachedVideosRef.current[courseId] || [];
       const video = videoList.find((v) => v.id === videoId);
@@ -956,16 +937,12 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         percentage: pct,
         completed,
         lastWatchedAt: now,
-        updatedAt: now,
-      };
+        updatedAt: now };
 
-      setProgressMap((prev) => {
-        const next = { ...prev, [videoId]: record };
-        try {
-          localStorage.setItem(`${LOCAL_STORAGE_PROGRESS_KEY}_${curUserId}`, JSON.stringify(next));
-        } catch {}
-        return next;
-      });
+      progressStore.update(videoId, record);
+      try {
+        localStorage.setItem(`${LOCAL_STORAGE_PROGRESS_KEY}_${curUserId}`, JSON.stringify(progressStore.getSnapshot()));
+      } catch {}
 
       setCourses((prev) => {
         return prev.map((c) => {
@@ -973,7 +950,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const vids = cachedVideosRef.current[courseId] || [];
             let compCount = 0;
             vids.forEach((v) => {
-              const p = v.id === videoId ? record : progressMapRef.current[v.id];
+              const p = v.id === videoId ? record : progressStore.getSnapshot()[v.id];
               if (p?.completed) compCount++;
             });
             const cPct = c.totalVideos > 0 ? Math.round((compCount / c.totalVideos) * 100) : 0;
@@ -981,8 +958,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               ...c,
               completedVideos: compCount,
               percentage: cPct,
-              updatedAt: now,
-            };
+              updatedAt: now };
           }
           return c;
         });
@@ -1002,15 +978,15 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const getVideoProgress = useCallback(
     (videoId: string): VideoProgress | undefined => {
-      return progressMap[videoId];
+      return progressStore.getSnapshot()[videoId];
     },
-    [progressMap]
+    []
   );
 
   // Derived: Continue Learning Hero Video
   const continueLearningVideo = useMemo(() => {
     // Look for most recently watched incomplete video, or most recent video
-    const sorted = (Object.values(progressMap) as VideoProgress[])
+    const sorted = (Object.values(progressStore.getSnapshot()) as VideoProgress[])
       .filter((p) => p.lastWatchedAt && p.watchedSeconds > 0)
       .sort((a, b) => new Date(b.lastWatchedAt).getTime() - new Date(a.lastWatchedAt).getTime());
 
@@ -1037,9 +1013,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               percentage: 0,
               completed: false,
               lastWatchedAt: firstCourse.createdAt,
-              updatedAt: firstCourse.createdAt,
-            },
-          };
+              updatedAt: firstCourse.createdAt } };
         }
       }
       return null;
@@ -1060,21 +1034,19 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       channelTitle: targetProgress.channelTitle || '',
       position: 0,
       durationSeconds: targetProgress.durationSeconds,
-      durationFormatted: '',
-    };
+      durationFormatted: '' };
 
     if (!course) return null;
 
     return {
       course,
       video,
-      progress: targetProgress,
-    };
-  }, [progressMap, courses, cachedVideos, userId]);
+      progress: targetProgress };
+  }, [ courses, cachedVideos, userId]);
 
   // Derived: Recently Watched list (sorted by lastWatchedAt desc)
   const recentlyWatchedList = useMemo(() => {
-    return (Object.values(progressMap) as VideoProgress[])
+    return (Object.values(progressStore.getSnapshot()) as VideoProgress[])
       .filter((p) => p.lastWatchedAt && (p.watchedSeconds > 0 || p.completed))
       .sort((a, b) => new Date(b.lastWatchedAt).getTime() - new Date(a.lastWatchedAt).getTime())
       .slice(0, 10)
@@ -1084,7 +1056,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const video = vids.find((v) => v.id === p.videoId);
         return { course, video, progress: p };
       });
-  }, [progressMap, courses, cachedVideos]);
+  }, [ courses, cachedVideos]);
 
   // Derived: Bookmarked courses
   const bookmarkedCourses = useMemo(() => {
@@ -1111,8 +1083,6 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         theme,
         setTheme,
         courses,
-        progressMap,
-        stats,
         loading,
         activeCourseId,
         activeVideoId,
@@ -1127,21 +1097,18 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         toggleVideoBookmark,
         getCourseVideos,
         cachedVideos,
+        bookmarkedCourses,
+        bookmarkedVideos,
         updateCourseStudyGoal,
         updateCourseStudySchedule,
         fetchAiStudyPlan,
         saveProgress,
         markVideoComplete,
         getVideoProgress,
-        continueLearningVideo,
-        recentlyWatchedList,
-        bookmarkedCourses,
-        bookmarkedVideos,
         isSearchOpen,
         setIsSearchOpen,
         isAddCourseOpen,
-        setIsAddCourseOpen,
-      }}
+        setIsAddCourseOpen }}
     >
       {children}
     </LearnTrackContext.Provider>

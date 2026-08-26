@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import {
   getCourseRemainingTimeStats,
-  formatEstimatedTimeRemaining,
-} from '../utils/formatters';
+  formatEstimatedTimeRemaining } from '../utils/formatters';
 import { calculateCourseDeadlinePacing } from '../utils/studyPlanner';
 import {
   Calendar,
@@ -15,27 +15,25 @@ import {
   Flame,
   ArrowRight,
   Sliders,
-  CheckCircle2,
-} from 'lucide-react';
+  CheckCircle2 } from 'lucide-react';
 
 export const DashboardStudyPlannerSummary: React.FC = () => {
-  const { courses, cachedVideos, progressMap, openCourse, setCurrentView } = useLearnTrack();
+  const { courses, cachedVideos,  openCourse, setCurrentView } = useLearnTrack();
+  const progressMap = useProgressMap();
 
   const coursesPacing = useMemo(() => {
     return courses.map((course) => {
       const remainingStats = getCourseRemainingTimeStats(
         course,
         cachedVideos[course.id],
-        progressMap
-      );
+        );
       const pacing = calculateCourseDeadlinePacing(course, remainingStats);
       return {
         course,
         remainingStats,
-        pacing,
-      };
+        pacing };
     });
-  }, [courses, cachedVideos, progressMap]);
+  }, [courses, cachedVideos, ]);
 
   const aheadCourses = coursesPacing.filter(
     (c) => !c.remainingStats.isCompleted && c.pacing.status === 'ahead'

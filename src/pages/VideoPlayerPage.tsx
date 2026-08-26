@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import { YouTubePlayer } from '../components/YouTubePlayer';
+import { LiveTimeDisplay } from '../components/LiveTimeDisplay';
+import { playerProgressStore } from '../utils/playerProgress';
 import { InThisVideoPanel } from '../components/InThisVideoPanel';
 import { FormattedDescription } from '../components/FormattedDescription';
 import { formatSeconds, getCourseRemainingTimeStats } from '../utils/formatters';
@@ -41,7 +44,7 @@ import {
   Code2,
   AlertCircle,
   Check,
-} from 'lucide-react';
+  Gauge } from 'lucide-react';
 
 export const VideoPlayerPage: React.FC = () => {
   const {
@@ -49,13 +52,13 @@ export const VideoPlayerPage: React.FC = () => {
     activeVideoId,
     courses,
     getCourseVideos,
-    progressMap,
+    
     saveProgress,
     markVideoComplete,
     toggleVideoBookmark,
     openVideo,
-    openCourse,
-  } = useLearnTrack();
+    openCourse } = useLearnTrack();
+  const progressMap = useProgressMap();
 
   const [videos, setVideos] = useState<CourseVideo[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
@@ -90,9 +93,9 @@ export const VideoPlayerPage: React.FC = () => {
   const videoStageRef = useRef<HTMLDivElement>(null);
 
   // Live player telemetry states
-  const [liveCurrentTime, setLiveCurrentTime] = useState<number>(0);
+
   const [liveDuration, setLiveDuration] = useState<number>(0);
-  const [livePercentage, setLivePercentage] = useState<number>(0);
+
   const [playerInstance, setPlayerInstance] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [playerStatus, setPlayerStatus] = useState<YouTubePlayerState['status']>('UNSTARTED');
@@ -100,6 +103,115 @@ export const VideoPlayerPage: React.FC = () => {
   const [showSpeedDropdown, setShowSpeedDropdown] = useState<boolean>(false);
   const [isTitleExpanded, setIsTitleExpanded] = useState<boolean>(false);
   const [doubtContext, setDoubtContext] = useState<DoubtContext | null>(null);
+  const [isPortrait, setIsPortrait] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(orientation: portrait)').matches;
+    }
+    return false;
+  });
+
+  const [isTablet, setIsTablet] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(min-width: 768px) and (max-width: 1279px)').matches;
+    }
+    return false;
+  });
+
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(min-width: 1280px)').matches;
+    }
+    return true;
+  });
+
+  // Efficiently track window orientation natively without thrashing React on every resize pixel
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(orientation: portrait)');
+    
+    const handleOrientationChange = (e: MediaQueryListEvent) => {
+      setIsPortrait(e.matches);
+    };
+
+    // Initialize with current value
+    setIsPortrait(mediaQuery.matches);
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleOrientationChange);
+    } else {
+      // Fallback for older browsers
+      mediaQuery.addListener(handleOrientationChange);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleOrientationChange);
+      } else {
+        mediaQuery.removeListener(handleOrientationChange);
+      }
+    };
+  }, []);
+
+  // Track desktop breakpoint natively
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(min-width: 1280px)');
+    const handleChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    setIsDesktop(mediaQuery.matches);
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+    } else {
+      mediaQuery.addListener(handleChange);
+    }
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
+
+  // Track tablet breakpoint natively
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(min-width: 768px) and (max-width: 1279px)');
+    const handleChange = (e: MediaQueryListEvent) => setIsTablet(e.matches);
+    setIsTablet(mediaQuery.matches);
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+    } else {
+      mediaQuery.addListener(handleChange);
+    }
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
+
+  // Track desktop breakpoint natively
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const handleChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    setIsDesktop(mediaQuery.matches);
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+    } else {
+      mediaQuery.addListener(handleChange);
+    }
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
 
   // Clear doubt context whenever active video changes
   useEffect(() => {
@@ -254,10 +366,10 @@ export const VideoPlayerPage: React.FC = () => {
     };
   }, [chapters.length]);
 
-  // Compute exact estimated remaining time stats for the playlist
+  // Compute exact estimated remaining time for the playlist
   const playlistRemainingStats = useMemo(() => {
-    return getCourseRemainingTimeStats(course, videos, progressMap);
-  }, [course, videos, progressMap]);
+    return getCourseRemainingTimeStats(course, videos, );
+  }, [course, videos, ]);
 
   // Load videos for this course
   useEffect(() => {
@@ -278,7 +390,7 @@ export const VideoPlayerPage: React.FC = () => {
   // Completed video IDs for context memory
   const completedVideoIds = useMemo(() => {
     return videos.filter((v) => progressMap[v.id]?.completed).map((v) => v.id);
-  }, [videos, progressMap]);
+  }, [videos, ]);
 
   // Fetch full video details (description) from backend if needed and not in cache
   useEffect(() => {
@@ -296,15 +408,13 @@ export const VideoPlayerPage: React.FC = () => {
     fetch('/api/youtube/video', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ videoId: activeVideoId }),
-    })
+      body: JSON.stringify({ videoId: activeVideoId }) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (isMounted && data?.description) {
           setExtraVideoDetails({
             description: data.description,
-            title: data.title,
-          });
+            title: data.title });
         }
       })
       .catch((err) => {
@@ -373,8 +483,7 @@ export const VideoPlayerPage: React.FC = () => {
       videoId: activeVideoId,
       description: activeDescription,
       durationSeconds: effectiveDuration,
-      title: currentVideo?.title,
-    })
+      title: currentVideo?.title })
       .then((res) => {
         if (isMounted) {
           setChapters(res.chapters);
@@ -399,12 +508,12 @@ export const VideoPlayerPage: React.FC = () => {
     if (chapters.length === 0) return null;
     for (let i = 0; i < chapters.length; i++) {
       const ch = chapters[i];
-      if (liveCurrentTime >= ch.startSeconds && (liveCurrentTime < ch.endSeconds || i === chapters.length - 1)) {
+      if (playerProgressStore.currentTime >= ch.startSeconds && (playerProgressStore.currentTime < ch.endSeconds || i === chapters.length - 1)) {
         return ch;
       }
     }
     return chapters[0];
-  }, [chapters, liveCurrentTime]);
+  }, [chapters, playerProgressStore.currentTime]);
 
   const currentChapterIndex = useMemo(() => {
     if (!currentChapter || chapters.length === 0) return -1;
@@ -422,22 +531,17 @@ export const VideoPlayerPage: React.FC = () => {
     }
     const initialProg = activeVideoId ? progressMap[activeVideoId] : undefined;
     if (initialProg?.watchedSeconds) {
-      setLiveCurrentTime(initialProg.watchedSeconds);
-      setLivePercentage(initialProg.percentage);
     } else {
-      setLiveCurrentTime(0);
-      setLivePercentage(0);
     }
   }, [activeVideoId, currentVideo?.durationSeconds]);
 
   // Progress update callback from YouTube player (~400ms)
   const handleProgress = useCallback(
     (cur: number, dur: number, pct: number) => {
-      setLiveCurrentTime(cur);
-      if (dur > 0) setLiveDuration(dur);
-      setLivePercentage(pct);
+      playerProgressStore.update(cur, dur, pct);
+      if (dur > 0 && Math.abs(dur - liveDuration) > 1) setLiveDuration(dur);
     },
-    []
+    [liveDuration]
   );
 
   // Periodic and event-driven database save handler
@@ -482,9 +586,7 @@ export const VideoPlayerPage: React.FC = () => {
     (targetSec: number) => {
       const totalDuration = liveDuration || currentVideo?.durationSeconds || 0;
       const bounded = Math.max(0, Math.min(targetSec, totalDuration > 0 ? totalDuration : targetSec));
-      setLiveCurrentTime(bounded);
       if (totalDuration > 0) {
-        setLivePercentage((bounded / totalDuration) * 100);
       }
       if (playerInstance && typeof playerInstance.seekTo === 'function') {
         try {
@@ -505,7 +607,7 @@ export const VideoPlayerPage: React.FC = () => {
     if (currentChapterIndex > 0) {
       // If user is more than 3 seconds into the current chapter, seek to start of current chapter first
       const curCh = chapters[currentChapterIndex];
-      if (liveCurrentTime - curCh.startSeconds > 3) {
+      if (playerProgressStore.currentTime - curCh.startSeconds > 3) {
         handleSeek(curCh.startSeconds);
       } else {
         handleSeek(chapters[currentChapterIndex - 1].startSeconds);
@@ -513,7 +615,7 @@ export const VideoPlayerPage: React.FC = () => {
     } else {
       handleSeek(0);
     }
-  }, [chapters, currentChapterIndex, liveCurrentTime, handleSeek]);
+  }, [chapters, currentChapterIndex, handleSeek]);
 
   const handleNextChapter = useCallback(() => {
     if (chapters.length === 0) return;
@@ -525,9 +627,9 @@ export const VideoPlayerPage: React.FC = () => {
   // Jump relative +/- seconds
   const handleJumpRelative = useCallback(
     (offsetSec: number) => {
-      handleSeek(liveCurrentTime + offsetSec);
+      handleSeek(playerProgressStore.currentTime + offsetSec);
     },
-    [handleSeek, liveCurrentTime]
+    [handleSeek]
   );
 
   // Play / Pause toggle synchronized with actual player instance state
@@ -572,12 +674,12 @@ export const VideoPlayerPage: React.FC = () => {
     }
     
     // 1. Immediately read the CURRENT YouTube player timestamp
-    let timestamp = liveCurrentTime;
+    let timestamp = playerProgressStore.currentTime;
     if (playerInstance && typeof playerInstance.getCurrentTime === 'function') {
       try {
         timestamp = playerInstance.getCurrentTime();
       } catch {
-        timestamp = liveCurrentTime;
+        timestamp = playerProgressStore.currentTime;
       }
     }
 
@@ -589,8 +691,7 @@ export const VideoPlayerPage: React.FC = () => {
       timestampSeconds: timestamp,
       timestampFormatted: formatSeconds(timestamp),
       chapterTitle: currentChapter?.title,
-      courseId: course.id,
-    });
+      courseId: course.id });
 
     // 3. Open the AI Assistant in Chat mode
     setSidebarTab('ai_assistant');
@@ -603,7 +704,7 @@ export const VideoPlayerPage: React.FC = () => {
         setShowMobileDrawer(true);
       }
     }
-  }, [currentVideo, course, liveCurrentTime, playerInstance, currentChapter, doubtContext]);
+  }, [currentVideo, course, playerInstance, currentChapter, doubtContext]);
 
   // Change playback speed
   const handleSetPlaybackSpeed = (speed: number) => {
@@ -620,8 +721,8 @@ export const VideoPlayerPage: React.FC = () => {
   // Navigation handlers
   const handleNext = () => {
     if (nextVideo && activeCourseId) {
-      if (liveCurrentTime > 0 && liveDuration > 0) {
-        saveProgress(activeCourseId, activeVideoId!, liveCurrentTime, liveDuration);
+      if (playerProgressStore.currentTime > 0 && liveDuration > 0) {
+        saveProgress(activeCourseId, activeVideoId!, playerProgressStore.currentTime, liveDuration);
       }
       openVideo(activeCourseId, nextVideo.id);
     }
@@ -629,8 +730,8 @@ export const VideoPlayerPage: React.FC = () => {
 
   const handlePrevious = () => {
     if (previousVideo && activeCourseId) {
-      if (liveCurrentTime > 0 && liveDuration > 0) {
-        saveProgress(activeCourseId, activeVideoId!, liveCurrentTime, liveDuration);
+      if (playerProgressStore.currentTime > 0 && liveDuration > 0) {
+        saveProgress(activeCourseId, activeVideoId!, playerProgressStore.currentTime, liveDuration);
       }
       openVideo(activeCourseId, previousVideo.id);
     }
@@ -720,14 +821,31 @@ export const VideoPlayerPage: React.FC = () => {
     );
   }
 
+  const handleClearDoubtContext = useCallback(() => setDoubtContext(null), []);
+
+  const handleCloseFullscreenOverlay = useCallback(() => {
+    setIsFullscreenOverlayOpen(false);
+    setDoubtContext(null);
+  }, []);
+
+  const handleCloseDesktopSidebar = useCallback(() => {
+    setShowPlaylistSidebar(false);
+    setDoubtContext(null);
+  }, []);
+
+  const handleCloseMobileDrawer = useCallback(() => {
+    setShowMobileDrawer(false);
+    setDoubtContext(null);
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Top Header Bar: Back to course button + Quick Access switcher */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-2">
         <button
           onClick={() => {
-            if (activeCourseId && activeVideoId && liveCurrentTime > 0 && liveDuration > 0) {
-              saveProgress(activeCourseId, activeVideoId, liveCurrentTime, liveDuration);
+            if (activeCourseId && activeVideoId && playerProgressStore.currentTime > 0 && liveDuration > 0) {
+              saveProgress(activeCourseId, activeVideoId, playerProgressStore.currentTime, liveDuration);
             }
             openCourse(course.id);
           }}
@@ -838,31 +956,50 @@ export const VideoPlayerPage: React.FC = () => {
             }`}
           >
             {/* Video Player Main Viewport */}
-            <div className="flex-1 min-h-0 relative w-full h-full flex items-center justify-center overflow-hidden bg-black">
-              {/* AMBIENT BACKGROUND LAYER (Fullscreen Only) */}
+            <div className={`flex-1 min-h-0 relative w-full h-full flex items-center justify-center overflow-hidden bg-black ${
+              isFullscreen && isFullscreenOverlayOpen && !isPortrait && !isDesktop ? 'flex-row p-4 gap-4' : 'flex-col'
+            }`}>
+              {/* AMBIENT BACKGROUND LAYER (Fullscreen Only - dynamically orientation-aware & GPU-optimized) */}
               {isFullscreen && (
                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                   <div 
-                    className="absolute inset-0 transition-all duration-1000 ease-in-out"
+                    className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                      isPortrait
+                        ? 'opacity-70 blur-[30px] saturate-[200%] brightness-110 scale-120'
+                        : isDesktop
+                          ? 'opacity-80 blur-[80px] saturate-[350%] brightness-120 scale-125'
+                          : 'opacity-70 blur-[40px] saturate-[200%] brightness-110 scale-110'
+                    } transform-gpu`}
                     style={currentVideo?.thumbnail ? {
                       backgroundImage: `url(${currentVideo.thumbnail})`,
                       backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      filter: 'blur(80px) saturate(400%) brightness(1.2)',
-                      transform: 'scale(1.25)',
-                      opacity: 0.8,
-                    } : { backgroundColor: '#18181b', opacity: 0.5 }}
+                      backgroundPosition: 'center' } : { backgroundColor: '#18181b', opacity: 0.5 }}
                   />
                   {/* Subtle darkening overlay so ambient isn't TOO bright */}
-                  <div className="absolute inset-0 bg-black/30" />
+                  <div className="absolute inset-0 bg-black/40 sm:bg-black/30" />
                 </div>
               )}
               
-              {/* 16:9 Constraint Stage for video to allow ambient glow outside */}
+              {/* 16:9 Constraint Stage for video to allow ambient glow outside with dynamic responsive shifting & scaling */}
               <div 
-                className={`relative z-10 flex items-center justify-center ${
-                  isFullscreen ? 'w-[96vw] max-w-[177.78vh] aspect-video max-h-[90vh]' : 'w-full h-full'
+                className={`relative z-10 flex items-center justify-center transition-all duration-300 ease-out transform-gpu shrink-0 ${
+                  isFullscreen
+                    ? isPortrait
+                      ? isFullscreenOverlayOpen
+                        ? 'w-[min(94vw,480px)] aspect-video mt-[calc(0.5rem+env(safe-area-inset-top,0px))] mb-2'
+                        : 'w-[94vw] max-w-[500px] aspect-video my-auto shrink-0'
+                      : isDesktop
+                        ? 'w-[96vw] max-w-[177.78vh] aspect-video max-h-[86vh] my-auto shrink-0'
+                        : isFullscreenOverlayOpen
+                          ? 'flex-1 min-w-0 max-h-[84vh] aspect-video my-auto'
+                          : 'w-[96vw] max-w-[177.78vh] aspect-video max-h-[86vh] my-auto shrink-0'
+                    : 'w-full h-full'
                 }`}
+                style={isFullscreen && !isPortrait && !isDesktop && isFullscreenOverlayOpen ? {
+                  maxWidth: fullscreenOverlayTab === 'ai_assistant' 
+                     ? 'calc(100vw - min(50vw, calc(100vw - 2rem)) - 2rem)' 
+                     : 'calc(100vw - min(380px, calc(100vw - 2rem)) - 2rem)'
+                } : undefined}
               >
                 {activeVideoId ? (
                   <YouTubePlayer
@@ -897,15 +1034,26 @@ export const VideoPlayerPage: React.FC = () => {
                     setFullscreenControlsVisible(true);
                   }}
                   onMouseMove={handleFullscreenMouseMove}
-                  style={{
-                    width:
-                      fullscreenOverlayTab === 'ai_assistant'
-                        ? 'min(920px, calc(100vw - 2rem))'
-                        : 'min(380px, calc(100vw - 2rem))',
-                  }}
-                  className="absolute top-4 right-4 bottom-[80px] z-50 pointer-events-auto flex flex-col max-w-[calc(100vw-2rem)] animate-in slide-in-from-right duration-200 transition-all shadow-2xl"
+                  style={
+                    isPortrait
+                      ? undefined
+                      : {
+                          width:
+                            fullscreenOverlayTab === 'ai_assistant'
+                              ? isDesktop ? 'min(920px, calc(100vw - 2rem))' : 'min(50vw, calc(100vw - 2rem))'
+                              : 'min(380px, calc(100vw - 2rem))' }
+                  }
+                  className={`z-50 pointer-events-auto flex flex-col transition-all duration-300 ease-out shadow-2xl ${
+                    isPortrait
+                      ? 'relative w-full flex-1 min-h-0 max-w-[520px] mx-auto animate-in slide-in-from-bottom duration-300'
+                      : isDesktop
+                        ? 'absolute right-4 top-4 bottom-[90px] animate-in slide-in-from-right duration-200'
+                        : 'relative h-full shrink-0 animate-in slide-in-from-right duration-200'
+                  }`}
                 >
-                  <div className="bg-zinc-950/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl flex flex-col h-full overflow-hidden transition-all">
+                  <div className={`bg-zinc-950/95 ${isDesktop ? 'backdrop-blur-xl' : 'backdrop-blur-md'} border-t border-x sm:border border-white/15 shadow-2xl flex flex-col h-full overflow-hidden transition-all ${
+                    isPortrait ? 'rounded-t-2xl sm:rounded-2xl pb-[env(safe-area-inset-bottom,0px)]' : 'rounded-2xl'
+                  }`}>
                     {/* Floating Panel Header: Tab Switching Bar */}
                     <div className="p-2.5 border-b border-white/10 flex items-center justify-between gap-1.5 shrink-0 bg-black/40">
                       <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar py-0.5">
@@ -983,15 +1131,15 @@ export const VideoPlayerPage: React.FC = () => {
                         <InThisVideoPanel
                           chapters={chapters}
                           chapterSource={chapterSource}
-                          currentTime={liveCurrentTime}
+                          
                           duration={effectiveDuration}
                           videoId={activeVideoId}
                           videoTitle={currentVideo?.title || extraVideoDetails?.title}
                           isOpen={true}
                           isFloatingOverlay={true}
                           hideHeader={true}
-                          onClose={() => setIsFullscreenOverlayOpen(false)}
-                          onSeekTo={(sec) => handleSeek(sec)}
+                          onClose={handleCloseFullscreenOverlay}
+                          onSeekTo={handleSeek}
                           className="!w-full !border-0 !rounded-none !shadow-none !h-full flex-1 min-h-0 max-h-none !bg-transparent"
                         />
                       </div>
@@ -1021,8 +1169,8 @@ export const VideoPlayerPage: React.FC = () => {
                                 key={`fs-pl-${vid.id}`}
                                 type="button"
                                 onClick={() => {
-                                  if (activeCourseId && liveCurrentTime > 0 && liveDuration > 0) {
-                                    saveProgress(activeCourseId, activeVideoId!, liveCurrentTime, liveDuration);
+                                  if (activeCourseId && playerProgressStore.currentTime > 0 && liveDuration > 0) {
+                                    saveProgress(activeCourseId, activeVideoId!, playerProgressStore.currentTime, liveDuration);
                                   }
                                   openVideo(course?.id || activeCourseId!, vid.id);
                                 }}
@@ -1085,18 +1233,15 @@ export const VideoPlayerPage: React.FC = () => {
                             <CourseAiAssistant
                               course={course}
                               currentVideo={currentVideo}
-                              currentTimeSeconds={liveCurrentTime}
+                              
                               currentChapter={currentChapter}
                               chapters={chapters}
                               completedVideoIds={completedVideoIds}
                               allVideos={videos}
                               isFullscreenMode={true}
                               doubtContext={doubtContext}
-                              onClearDoubtContext={() => setDoubtContext(null)}
-                              onClose={() => {
-                                setIsFullscreenOverlayOpen(false);
-                                setDoubtContext(null);
-                              }}
+                              onClearDoubtContext={handleClearDoubtContext}
+                              onClose={handleCloseFullscreenOverlay}
                             />
                           </React.Suspense>
                         ) : (
@@ -1109,178 +1254,335 @@ export const VideoPlayerPage: React.FC = () => {
               )}
             </div>
 
-            {/* LearnTrack Custom Control Bar (Floating Transparent Overlay) */}
+            {/* LearnTrack Custom Control Bar (Floating Transparent Overlay - dynamically orientation-aware) */}
             {isFullscreen && (
               <div 
-                className={`absolute bottom-0 left-0 w-full z-40 pointer-events-none transition-opacity duration-300 ${
-                  fullscreenControlsVisible || isFullscreenOverlayOpen || showSpeedDropdown ? 'opacity-100' : 'opacity-0'
+                className={`absolute bottom-0 left-0 w-full transition-opacity duration-300 ${
+                  (!isFullscreenOverlayOpen || isDesktop) && (fullscreenControlsVisible || showSpeedDropdown) 
+                    ? 'opacity-100 z-40 pointer-events-none' 
+                    : 'opacity-0 -z-10 pointer-events-none'
                 }`}
               >
                 {/* Thin Subtle Purple Accent Divider Line */}
                 <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/15 to-transparent" />
                 
-                <div className="w-full bg-gradient-to-t from-black/40 via-black/10 to-transparent px-4 sm:px-6 pt-2 pb-3.5 select-none">
-                  <div
-                    style={{ width: 'min(96%, 920px)' }}
-                    className="mx-auto flex items-center justify-between gap-4 pointer-events-auto"
-                  >
-                    {/* Left Controls Group: Chapters, Playlist, Ask AI */}
-                  <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-                    {/* 1. Chapters Button */}
-                    {chapters.length > 0 && (
-                      <button
-                        id="fs-chapters-btn"
-                        type="button"
-                        onClick={() => {
-                          if (isFullscreenOverlayOpen && fullscreenOverlayTab === 'in_this_video') {
-                            setIsFullscreenOverlayOpen(false);
-                          } else {
-                            setFullscreenOverlayTab('in_this_video');
-                            setIsFullscreenOverlayOpen(true);
-                          }
-                        }}
-                        className={`px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md border shadow-lg ${
-                          isFullscreenOverlayOpen && fullscreenOverlayTab === 'in_this_video'
-                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/80 font-semibold shadow-cyan-500/10'
-                            : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border-white/10 hover:border-white/25'
-                        }`}
-                        title="Toggle Chapters"
-                      >
-                        <List className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Chapters ({chapters.length})</span>
-                      </button>
-                    )}
+                <div className={`w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 sm:px-6 pt-2 select-none ${
+                  isPortrait ? 'pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]' : 'pb-[calc(0.85rem+env(safe-area-inset-bottom,0px))]'
+                }`}>
+                  {isPortrait ? (
+                    /* PORTRAIT FULLSCREEN: 2-ROW BALANCED CONTROL BAR */
+                    <div className="w-full max-w-[480px] mx-auto flex flex-col gap-2 pointer-events-auto select-none">
+                      {/* ROW 1: [ Chapters ] [ Playlist ] [ Ask AI ] */}
+                      <div className={`grid ${chapters.length > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 w-full`}>
+                        {chapters.length > 0 && (
+                          <button
+                            id="fs-portrait-chapters-btn"
+                            type="button"
+                            onClick={() => {
+                              if (isFullscreenOverlayOpen && fullscreenOverlayTab === 'in_this_video') {
+                                setIsFullscreenOverlayOpen(false);
+                              } else {
+                                setFullscreenOverlayTab('in_this_video');
+                                setIsFullscreenOverlayOpen(true);
+                              }
+                            }}
+                            className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer backdrop-blur-md border shadow-lg truncate ${
+                              isFullscreenOverlayOpen && fullscreenOverlayTab === 'in_this_video'
+                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/80 shadow-cyan-500/10'
+                                : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 border-white/10 hover:border-white/25'
+                            }`}
+                            title="Toggle Chapters"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <span className="truncate">Chapters</span>
+                            <span className="text-[10px] opacity-75 font-mono">({chapters.length})</span>
+                          </button>
+                        )}
 
-                    {/* 2. Playlist Button */}
-                    <button
-                      id="fs-playlist-btn"
-                      type="button"
-                      onClick={() => {
-                        if (isFullscreenOverlayOpen && fullscreenOverlayTab === 'playlist') {
-                          setIsFullscreenOverlayOpen(false);
-                        } else {
-                          setFullscreenOverlayTab('playlist');
-                          setIsFullscreenOverlayOpen(true);
-                        }
-                      }}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md border shadow-lg ${
-                        isFullscreenOverlayOpen && fullscreenOverlayTab === 'playlist'
-                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400/80 font-semibold shadow-indigo-500/10'
-                          : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border-white/10 hover:border-white/25'
-                      }`}
-                      title="Toggle Playlist"
-                    >
-                      <List className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>Playlist ({currentIndex + 1}/{videos.length})</span>
-                    </button>
+                        <button
+                          id="fs-portrait-playlist-btn"
+                          type="button"
+                          onClick={() => {
+                            if (isFullscreenOverlayOpen && fullscreenOverlayTab === 'playlist') {
+                              setIsFullscreenOverlayOpen(false);
+                            } else {
+                              setFullscreenOverlayTab('playlist');
+                              setIsFullscreenOverlayOpen(true);
+                            }
+                          }}
+                          className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer backdrop-blur-md border shadow-lg truncate ${
+                            isFullscreenOverlayOpen && fullscreenOverlayTab === 'playlist'
+                              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400/80 shadow-indigo-500/10'
+                              : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 border-white/10 hover:border-white/25'
+                          }`}
+                          title="Toggle Playlist"
+                        >
+                          <List className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                          <span className="truncate">Playlist</span>
+                          <span className="text-[10px] opacity-75 font-mono">({currentIndex + 1}/{videos.length})</span>
+                        </button>
 
-                    {/* 3. Ask AI Button */}
-                    <button
-                      id="fs-ask-ai-btn"
-                      type="button"
-                      onClick={() => {
-                        if (isFullscreenOverlayOpen && fullscreenOverlayTab === 'ai_assistant') {
-                          setIsFullscreenOverlayOpen(false);
-                          setDoubtContext(null);
-                        } else {
-                          setDoubtContext(null);
-                          setFullscreenOverlayTab('ai_assistant');
-                          setIsFullscreenOverlayOpen(true);
-                          if (typeof window !== 'undefined') {
-                            window.dispatchEvent(new CustomEvent('learntrack_open_ai_chat', { detail: { clearDoubt: true } }));
-                          }
-                        }
-                      }}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md border shadow-lg ${
-                        isFullscreenOverlayOpen && fullscreenOverlayTab === 'ai_assistant'
-                          ? 'bg-purple-600/25 text-purple-200 border-purple-400/80 font-semibold shadow-purple-500/10'
-                          : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border-white/10 hover:border-white/25'
-                      }`}
-                      title="Toggle AI Assistant"
-                    >
-                      <Bot className="w-3.5 h-3.5 text-purple-400" />
-                      <span>Ask AI</span>
-                    </button>
-                  </div>
+                        <button
+                          id="fs-portrait-ask-ai-btn"
+                          type="button"
+                          onClick={() => {
+                            if (isFullscreenOverlayOpen && fullscreenOverlayTab === 'ai_assistant') {
+                              setIsFullscreenOverlayOpen(false);
+                              setDoubtContext(null);
+                            } else {
+                              setDoubtContext(null);
+                              setFullscreenOverlayTab('ai_assistant');
+                              setIsFullscreenOverlayOpen(true);
+                              if (typeof window !== 'undefined') {
+                                window.dispatchEvent(new CustomEvent('learntrack_open_ai_chat', { detail: { clearDoubt: true } }));
+                              }
+                            }
+                          }}
+                          className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer backdrop-blur-md border shadow-lg truncate ${
+                            isFullscreenOverlayOpen && fullscreenOverlayTab === 'ai_assistant'
+                              ? 'bg-purple-600/25 text-purple-200 border-purple-400/80 shadow-purple-500/10'
+                              : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 border-white/10 hover:border-white/25'
+                          }`}
+                          title="Toggle AI Assistant"
+                        >
+                          <Bot className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                          <span className="truncate">Ask AI</span>
+                        </button>
+                      </div>
 
-                  {/* Right Controls Group: Doubt, Speed, Exit Fullscreen */}
-                  <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-                    {/* 4. Doubt Button */}
-                    <button
-                      id="fs-doubt-btn"
-                      type="button"
-                      onClick={handleDoubtClick}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md border shadow-lg ${
-                        doubtContext
-                          ? 'bg-purple-600 hover:bg-purple-700 text-white font-semibold border-purple-400 shadow-md shadow-purple-500/25'
-                          : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border-white/10 hover:border-white/25'
-                      }`}
-                      title={doubtContext ? 'Cancel doubt and close assistant' : 'Ask a doubt about this moment'}
-                    >
-                      <HelpCircle className={`w-3.5 h-3.5 ${doubtContext ? 'text-white' : 'text-purple-400'}`} />
-                      <span>{doubtContext ? 'Cancel Doubt' : 'Doubt'}</span>
-                      {doubtContext && (
-                        <span className="text-[10px] bg-purple-950 px-1.5 py-0.5 rounded font-mono font-bold text-purple-200 border border-purple-400/40">
-                          {doubtContext.timestampFormatted}
-                        </span>
-                      )}
-                    </button>
+                      {/* ROW 2: [ Doubt ] [ 1x / Speed ] [ Exit Fullscreen ] */}
+                      <div className="grid grid-cols-3 gap-2 w-full">
+                        {/* 1. Doubt */}
+                        <button
+                          id="fs-portrait-doubt-btn"
+                          type="button"
+                          onClick={handleDoubtClick}
+                          className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer backdrop-blur-md border shadow-lg truncate ${
+                            doubtContext
+                              ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-400 shadow-md shadow-purple-500/25'
+                              : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 border-white/10 hover:border-white/25'
+                          }`}
+                          title={doubtContext ? 'Cancel doubt and close assistant' : 'Ask a doubt about this moment'}
+                        >
+                          <HelpCircle className={`w-3.5 h-3.5 shrink-0 ${doubtContext ? 'text-white' : 'text-purple-400'}`} />
+                          <span className="truncate">{doubtContext ? 'Cancel' : 'Doubt'}</span>
+                        </button>
 
-                    {/* 5. Playback Speed Selector */}
-                    <div className="relative">
-                      <button
-                        id="fs-speed-btn"
-                        type="button"
-                        onClick={() => setShowSpeedDropdown((prev) => !prev)}
-                        className="px-3 py-1.5 rounded-full bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border border-white/10 hover:border-white/25 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer backdrop-blur-md shadow-lg"
-                        title="Change Playback Speed"
-                        aria-expanded={showSpeedDropdown}
-                      >
-                        <span>{playbackSpeed}x</span>
-                        <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform ${showSpeedDropdown ? 'rotate-180' : ''}`} />
-                      </button>
+                        {/* 2. Speed Selector */}
+                        <div className="relative w-full">
+                          <button
+                            id="fs-portrait-speed-btn"
+                            type="button"
+                            onClick={() => setShowSpeedDropdown((prev) => !prev)}
+                            className="w-full min-h-[44px] px-2.5 py-2 rounded-xl bg-black/60 hover:bg-zinc-900/80 text-zinc-100 border border-white/10 hover:border-white/25 text-xs font-semibold flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer backdrop-blur-md shadow-lg"
+                            title="Change Playback Speed"
+                            aria-expanded={showSpeedDropdown}
+                          >
+                            <Gauge className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                            <span>{playbackSpeed}x</span>
+                            <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform ${showSpeedDropdown ? 'rotate-180' : ''}`} />
+                          </button>
 
-                      {/* Dropdown Menu */}
-                      {showSpeedDropdown && (
-                        <div className="absolute bottom-full right-0 mb-2 py-1 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl z-50 min-w-[90px] flex flex-col overflow-hidden">
-                          {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((spd) => (
-                            <button
-                              key={`spd-${spd}`}
-                              type="button"
-                              onClick={() => {
-                                handleSetPlaybackSpeed(spd);
-                                setShowSpeedDropdown(false);
-                              }}
-                              className={`px-3 py-1.5 text-xs text-left transition flex items-center justify-between cursor-pointer ${
-                                playbackSpeed === spd
-                                  ? 'bg-purple-600/30 text-purple-300 font-bold'
-                                  : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                              }`}
-                            >
-                              <span>{spd}x</span>
-                              {playbackSpeed === spd && <Check className="w-3 h-3 text-purple-400" />}
-                            </button>
-                          ))}
+                          {showSpeedDropdown && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 py-1 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl z-50 min-w-[100px] flex flex-col overflow-hidden">
+                              {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((spd) => (
+                                <button
+                                  key={`spd-p-${spd}`}
+                                  type="button"
+                                  onClick={() => {
+                                    handleSetPlaybackSpeed(spd);
+                                    setShowSpeedDropdown(false);
+                                  }}
+                                  className={`px-3 py-2 text-xs text-left transition flex items-center justify-between cursor-pointer active:bg-purple-600/40 ${
+                                    playbackSpeed === spd
+                                      ? 'bg-purple-600/30 text-purple-300 font-bold'
+                                      : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                                  }`}
+                                >
+                                  <span>{spd}x</span>
+                                  {playbackSpeed === spd && <Check className="w-3 h-3 text-purple-400" />}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    {/* 6. Exit Fullscreen Button */}
-                    <button
-                      id="fs-exit-fullscreen-btn"
-                      type="button"
-                      onClick={handleToggleFullscreen}
-                      className="px-3.5 py-1.5 rounded-full bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border border-white/10 hover:border-white/25 text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md shadow-lg"
-                      title="Exit Fullscreen (Esc)"
-                      aria-label="Exit Fullscreen"
+                        {/* 3. Exit Fullscreen */}
+                        <button
+                          id="fs-portrait-exit-fullscreen-btn"
+                          type="button"
+                          onClick={handleToggleFullscreen}
+                          className="min-h-[44px] px-2.5 py-2 rounded-xl bg-black/60 hover:bg-zinc-900/80 text-zinc-100 border border-white/10 hover:border-white/25 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer backdrop-blur-md shadow-lg truncate"
+                          title="Exit Fullscreen"
+                          aria-label="Exit Fullscreen"
+                        >
+                          <Minimize className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
+                          <span className="truncate">Exit</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* LANDSCAPE / DESKTOP FULLSCREEN: SINGLE-ROW BAR */
+                    <div
+                      style={{ width: 'min(96%, 920px)' }}
+                      className="mx-auto flex items-center justify-between gap-4 pointer-events-auto select-none"
                     >
-                      <Minimize className="w-3.5 h-3.5 text-zinc-300" />
-                      <span>Exit Fullscreen</span>
-                    </button>
-                  </div>
+                      {/* Left Controls Group: Chapters, Playlist, Ask AI */}
+                      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                        {chapters.length > 0 && (
+                          <button
+                            id="fs-chapters-btn"
+                            type="button"
+                            onClick={() => {
+                              if (isFullscreenOverlayOpen && fullscreenOverlayTab === 'in_this_video') {
+                                setIsFullscreenOverlayOpen(false);
+                              } else {
+                                setFullscreenOverlayTab('in_this_video');
+                                setIsFullscreenOverlayOpen(true);
+                              }
+                            }}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md border shadow-lg ${
+                              isFullscreenOverlayOpen && fullscreenOverlayTab === 'in_this_video'
+                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/80 font-semibold shadow-cyan-500/10'
+                                : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border-white/10 hover:border-white/25'
+                            }`}
+                            title="Toggle Chapters"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>Chapters ({chapters.length})</span>
+                          </button>
+                        )}
+
+                        <button
+                          id="fs-playlist-btn"
+                          type="button"
+                          onClick={() => {
+                            if (isFullscreenOverlayOpen && fullscreenOverlayTab === 'playlist') {
+                              setIsFullscreenOverlayOpen(false);
+                            } else {
+                              setFullscreenOverlayTab('playlist');
+                              setIsFullscreenOverlayOpen(true);
+                            }
+                          }}
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md border shadow-lg ${
+                            isFullscreenOverlayOpen && fullscreenOverlayTab === 'playlist'
+                              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400/80 font-semibold shadow-indigo-500/10'
+                              : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border-white/10 hover:border-white/25'
+                          }`}
+                          title="Toggle Playlist"
+                        >
+                          <List className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>Playlist ({currentIndex + 1}/{videos.length})</span>
+                        </button>
+
+                        <button
+                          id="fs-ask-ai-btn"
+                          type="button"
+                          onClick={() => {
+                            if (isFullscreenOverlayOpen && fullscreenOverlayTab === 'ai_assistant') {
+                              setIsFullscreenOverlayOpen(false);
+                              setDoubtContext(null);
+                            } else {
+                              setDoubtContext(null);
+                              setFullscreenOverlayTab('ai_assistant');
+                              setIsFullscreenOverlayOpen(true);
+                              if (typeof window !== 'undefined') {
+                                window.dispatchEvent(new CustomEvent('learntrack_open_ai_chat', { detail: { clearDoubt: true } }));
+                              }
+                            }
+                          }}
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md border shadow-lg ${
+                            isFullscreenOverlayOpen && fullscreenOverlayTab === 'ai_assistant'
+                              ? 'bg-purple-600/25 text-purple-200 border-purple-400/80 font-semibold shadow-purple-500/10'
+                              : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border-white/10 hover:border-white/25'
+                          }`}
+                          title="Toggle AI Assistant"
+                        >
+                          <Bot className="w-3.5 h-3.5 text-purple-400" />
+                          <span>Ask AI</span>
+                        </button>
+                      </div>
+
+                      {/* Right Controls Group: Doubt, Speed, Exit Fullscreen */}
+                      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                        {/* 4. Doubt Button */}
+                        <button
+                          id="fs-doubt-btn"
+                          type="button"
+                          onClick={handleDoubtClick}
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md border shadow-lg ${
+                            doubtContext
+                              ? 'bg-purple-600 hover:bg-purple-700 text-white font-semibold border-purple-400 shadow-md shadow-purple-500/25'
+                              : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border-white/10 hover:border-white/25'
+                          }`}
+                          title={doubtContext ? 'Cancel doubt and close assistant' : 'Ask a doubt about this moment'}
+                        >
+                          <HelpCircle className={`w-3.5 h-3.5 ${doubtContext ? 'text-white' : 'text-purple-400'}`} />
+                          <span>{doubtContext ? 'Cancel Doubt' : 'Doubt'}</span>
+                          {doubtContext && (
+                            <span className="text-[10px] bg-purple-950 px-1.5 py-0.5 rounded font-mono font-bold text-purple-200 border border-purple-400/40">
+                              {doubtContext.timestampFormatted}
+                            </span>
+                          )}
+                        </button>
+
+                        {/* 5. Playback Speed Selector */}
+                        <div className="relative">
+                          <button
+                            id="fs-speed-btn"
+                            type="button"
+                            onClick={() => setShowSpeedDropdown((prev) => !prev)}
+                            className="px-3 py-1.5 rounded-full bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border border-white/10 hover:border-white/25 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer backdrop-blur-md shadow-lg"
+                            title="Change Playback Speed"
+                            aria-expanded={showSpeedDropdown}
+                          >
+                            <Gauge className="w-3.5 h-3.5 text-zinc-400" />
+                            <span>{playbackSpeed}x</span>
+                            <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform ${showSpeedDropdown ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Dropdown Menu */}
+                          {showSpeedDropdown && (
+                            <div className="absolute bottom-full right-0 mb-2 py-1 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl z-50 min-w-[90px] flex flex-col overflow-hidden">
+                              {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((spd) => (
+                                <button
+                                  key={`spd-${spd}`}
+                                  type="button"
+                                  onClick={() => {
+                                    handleSetPlaybackSpeed(spd);
+                                    setShowSpeedDropdown(false);
+                                  }}
+                                  className={`px-3 py-1.5 text-xs text-left transition flex items-center justify-between cursor-pointer ${
+                                    playbackSpeed === spd
+                                      ? 'bg-purple-600/30 text-purple-300 font-bold'
+                                      : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                                  }`}
+                                >
+                                  <span>{spd}x</span>
+                                  {playbackSpeed === spd && <Check className="w-3 h-3 text-purple-400" />}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 6. Exit Fullscreen Button */}
+                        <button
+                          id="fs-exit-fullscreen-btn"
+                          type="button"
+                          onClick={handleToggleFullscreen}
+                          className="px-3.5 py-1.5 rounded-full bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border border-white/10 hover:border-white/25 text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md shadow-lg"
+                          title="Exit Fullscreen (Esc)"
+                          aria-label="Exit Fullscreen"
+                        >
+                          <Minimize className="w-3.5 h-3.5 text-zinc-300" />
+                          <span>Exit Fullscreen</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
             )}
           </div>
 
@@ -1413,15 +1715,7 @@ export const VideoPlayerPage: React.FC = () => {
             {/* Time / Progress Stats & Doubt Action */}
             <div className="flex items-center justify-between text-xs text-[var(--ink-dim)]">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-[var(--ink)] flex items-center gap-1.5 bg-[var(--surface-high)] px-2.5 py-1 rounded-lg border border-[var(--border)] font-mono text-xs">
-                  <Clock className="w-3.5 h-3.5 text-[var(--accent)]" />
-                  <span>{formatSeconds(liveCurrentTime)}</span>
-                  <span className="text-[var(--ink-faint)]">/</span>
-                  <span>{formatSeconds(effectiveDuration)}</span>
-                </span>
-                <span className="font-bold text-[var(--ink)] bg-[var(--surface-high)] px-2 py-1 rounded-lg border border-[var(--border)] text-xs">
-                  {livePercentage.toFixed(1)}%
-                </span>
+<LiveTimeDisplay duration={effectiveDuration} />
               </div>
 
               {/* Right: Doubt in Normal Mode (Switchable Toggle) */}
@@ -1456,7 +1750,7 @@ export const VideoPlayerPage: React.FC = () => {
                 <button
                   onClick={handlePrevious}
                   disabled={!previousVideo}
-                  className="px-3.5 py-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-high)] hover:bg-[var(--surface-mid)] text-[var(--ink)] text-xs font-medium flex items-center gap-1.5 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  className="min-h-[44px] px-4 py-2 rounded-full border border-[var(--border)] bg-[var(--surface-high)] hover:bg-[var(--surface-mid)] active:scale-95 text-[var(--ink)] text-xs font-medium flex items-center gap-1.5 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer touch-manipulation"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" /> Prev
                 </button>
@@ -1465,7 +1759,7 @@ export const VideoPlayerPage: React.FC = () => {
                 <button
                   onClick={handleNext}
                   disabled={!nextVideo}
-                  className="px-3.5 py-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-high)] hover:bg-[var(--surface-mid)] text-[var(--ink)] text-xs font-medium flex items-center gap-1.5 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  className="min-h-[44px] px-4 py-2 rounded-full border border-[var(--border)] bg-[var(--surface-high)] hover:bg-[var(--surface-mid)] active:scale-95 text-[var(--ink)] text-xs font-medium flex items-center gap-1.5 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer touch-manipulation"
                 >
                   Next <ChevronRight className="w-3.5 h-3.5" />
                 </button>
@@ -1474,7 +1768,7 @@ export const VideoPlayerPage: React.FC = () => {
               {/* Mark as Complete Button */}
               <button
                 onClick={handleToggleComplete}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer ${
+                className={`min-h-[44px] px-5 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer touch-manipulation ${
                   isCompleted
                     ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                     : 'bg-[var(--ink)] text-[var(--bg)] hover:-translate-y-0.5 shadow-sm'
@@ -1501,7 +1795,7 @@ export const VideoPlayerPage: React.FC = () => {
               </div>
               <FormattedDescription
                 description={activeDescription}
-                onSeek={(sec) => handleSeek(sec)}
+                onSeek={handleSeek}
               />
             </div>
           )}
@@ -1567,15 +1861,13 @@ export const VideoPlayerPage: React.FC = () => {
             <InThisVideoPanel
               chapters={chapters}
               chapterSource={chapterSource}
-              currentTime={liveCurrentTime}
+              
               duration={effectiveDuration}
               videoId={activeVideoId}
               videoTitle={currentVideo?.title || extraVideoDetails?.title}
               isOpen={true}
-              onClose={() => {
-                setShowPlaylistSidebar(false);
-              }}
-              onSeekTo={(sec) => handleSeek(sec)}
+              onClose={handleCloseDesktopSidebar}
+              onSeekTo={handleSeek}
             />
           </div>
 
@@ -1623,8 +1915,8 @@ export const VideoPlayerPage: React.FC = () => {
                     <button
                       key={vid.id}
                       onClick={() => {
-                        if (activeCourseId && liveCurrentTime > 0 && liveDuration > 0) {
-                          saveProgress(activeCourseId, activeVideoId!, liveCurrentTime, liveDuration);
+                        if (activeCourseId && playerProgressStore.currentTime > 0 && liveDuration > 0) {
+                          saveProgress(activeCourseId, activeVideoId!, playerProgressStore.currentTime, liveDuration);
                         }
                         openVideo(course.id, vid.id);
                       }}
@@ -1696,18 +1988,15 @@ export const VideoPlayerPage: React.FC = () => {
                   <CourseAiAssistant
                     course={course}
                     currentVideo={currentVideo}
-                    currentTimeSeconds={liveCurrentTime}
+                    
                     currentChapter={currentChapter}
                     chapters={chapters}
                     completedVideoIds={completedVideoIds}
                     allVideos={videos}
                     isFullscreenMode={false}
                     doubtContext={doubtContext}
-                    onClearDoubtContext={() => setDoubtContext(null)}
-                    onClose={() => {
-                      setShowPlaylistSidebar(false);
-                      setDoubtContext(null);
-                    }}
+                    onClearDoubtContext={handleClearDoubtContext}
+                    onClose={handleCloseDesktopSidebar}
                   />
                 </React.Suspense>
               ) : (
@@ -1844,18 +2133,13 @@ export const VideoPlayerPage: React.FC = () => {
                 <InThisVideoPanel
                   chapters={chapters}
                   chapterSource={chapterSource}
-                  currentTime={liveCurrentTime}
+                  
                   duration={effectiveDuration}
                   videoId={activeVideoId}
                   videoTitle={currentVideo?.title || extraVideoDetails?.title}
                   isOpen={true}
-                  onClose={() => {
-                    setShowMobileDrawer(false);
-                    setDoubtContext(null);
-                  }}
-                  onSeekTo={(sec) => {
-                    handleSeek(sec);
-                  }}
+                  onClose={handleCloseMobileDrawer}
+                  onSeekTo={handleSeek}
                   hideHeader={true}
                   className="!w-full !border-0 !rounded-none !shadow-none !h-full flex-1 min-h-0 max-h-none"
                 />
@@ -1881,8 +2165,8 @@ export const VideoPlayerPage: React.FC = () => {
                       <button
                         key={`mob-pl-${vid.id}`}
                         onClick={() => {
-                          if (activeCourseId && liveCurrentTime > 0 && liveDuration > 0) {
-                            saveProgress(activeCourseId, activeVideoId!, liveCurrentTime, liveDuration);
+                          if (activeCourseId && playerProgressStore.currentTime > 0 && liveDuration > 0) {
+                            saveProgress(activeCourseId, activeVideoId!, playerProgressStore.currentTime, liveDuration);
                           }
                           openVideo(course.id, vid.id);
                           setShowMobileDrawer(false);
@@ -1947,18 +2231,15 @@ export const VideoPlayerPage: React.FC = () => {
                     <CourseAiAssistant
                       course={course}
                       currentVideo={currentVideo}
-                      currentTimeSeconds={liveCurrentTime}
+                      
                       currentChapter={currentChapter}
                       chapters={chapters}
                       completedVideoIds={completedVideoIds}
                       allVideos={videos}
                       isFullscreenMode={false}
                       doubtContext={doubtContext}
-                      onClearDoubtContext={() => setDoubtContext(null)}
-                      onClose={() => {
-                        setShowMobileDrawer(false);
-                        setDoubtContext(null);
-                      }}
+                      onClearDoubtContext={handleClearDoubtContext}
+                      onClose={handleCloseMobileDrawer}
                     />
                   </React.Suspense>
                 ) : (

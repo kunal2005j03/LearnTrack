@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import { formatSeconds, getCourseRemainingTimeStats, formatTotalWatchTime } from '../utils/formatters';
 import { CourseVideo } from '../types';
@@ -14,22 +15,21 @@ import {
   Clock,
   Hourglass,
   Sparkles,
-  BarChart2,
-} from 'lucide-react';
+  BarChart2 } from 'lucide-react';
 
 export const CourseDetailPage: React.FC = () => {
   const {
     activeCourseId,
     courses,
     getCourseVideos,
-    progressMap,
+    
     openVideo,
     setCurrentView,
     toggleCourseBookmark,
     toggleVideoBookmark,
     deleteCourse,
-    markVideoComplete,
-  } = useLearnTrack();
+    markVideoComplete } = useLearnTrack();
+  const progressMap = useProgressMap();
 
   const [videos, setVideos] = useState<CourseVideo[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
@@ -58,7 +58,7 @@ export const CourseDetailPage: React.FC = () => {
     if (videos.length === 0) return null;
     const uncompleted = videos.find((v) => !progressMap[v.id]?.completed);
     return uncompleted || videos[0];
-  }, [videos, progressMap]);
+  }, [videos, ]);
 
   // Filtered videos
   const filteredVideos = useMemo(() => {
@@ -72,7 +72,7 @@ export const CourseDetailPage: React.FC = () => {
       }
       return true;
     });
-  }, [videos, videoFilter, searchQuery, progressMap]);
+  }, [videos, videoFilter, searchQuery, ]);
 
   if (!course) {
     return (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -10,17 +11,17 @@ import {
   Laptop,
   LogOut,
   LogIn,
-  ShieldCheck,
-} from 'lucide-react';
+  ShieldCheck } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
-  const { theme, setTheme, courses, progressMap, stats } = useLearnTrack();
+  const { theme, setTheme, courses } = useLearnTrack();
+  const progressMap = useProgressMap();
+  const stats = useStats();
   const { user, signInGoogle, signOut, authError } = useAuth();
 
   const [youtubeStatus, setYoutubeStatus] = useState<{ configured: boolean; message: string }>({
     configured: false,
-    message: 'Checking YouTube Data API status...',
-  });
+    message: 'Checking YouTube Data API status...' });
   const [checkingApi, setCheckingApi] = useState(false);
 
   const checkYouTubeStatus = async () => {
@@ -32,8 +33,7 @@ export const SettingsPage: React.FC = () => {
     } catch (e: any) {
       setYoutubeStatus({
         configured: false,
-        message: 'Could not connect to server status endpoint.',
-      });
+        message: 'Could not connect to server status endpoint.' });
     } finally {
       setCheckingApi(false);
     }

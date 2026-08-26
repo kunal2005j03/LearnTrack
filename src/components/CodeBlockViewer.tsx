@@ -11,7 +11,7 @@ interface CodeBlockViewerProps {
   showLineNumbers?: boolean;
 }
 
-export const CodeBlockViewer: React.FC<CodeBlockViewerProps> = ({
+export const CodeBlockViewer: React.FC<CodeBlockViewerProps> = React.memo(({
   code,
   language = 'python',
   title,
@@ -175,5 +175,5 @@ export const CodeBlockViewer: React.FC<CodeBlockViewerProps> = ({
       )}
     </div>
   );
-};
+});
 

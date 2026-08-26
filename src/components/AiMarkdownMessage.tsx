@@ -12,7 +12,7 @@ interface AiMarkdownMessageProps {
   className?: string;
 }
 
-export const AiMarkdownMessage: React.FC<AiMarkdownMessageProps> = ({
+export const AiMarkdownMessage: React.FC<AiMarkdownMessageProps> = React.memo(({
   content,
   onRunInTerminal,
   onClearSnippet,
@@ -20,8 +20,8 @@ export const AiMarkdownMessage: React.FC<AiMarkdownMessageProps> = ({
   className = '',
 }) => {
   const handleTimelineClick = () => {
-    if (onOpenTimelineSelector) {
-      onOpenTimelineSelector();
+    if (callbacksRef.current.onOpenTimelineSelector) {
+      callbacksRef.current.onOpenTimelineSelector();
     } else {
       window.dispatchEvent(new CustomEvent('learntrack_open_timeline_picker'));
     }
@@ -71,11 +71,23 @@ export const AiMarkdownMessage: React.FC<AiMarkdownMessageProps> = ({
     });
   };
 
-  return (
-    <div className={`leading-relaxed max-w-none break-words text-zinc-200 ${className}`}>
-      <Markdown
-        components={{
-          // H1: Display Heading with subtle gradient underline
+
+  const callbacksRef = React.useRef({ onRunInTerminal, onClearSnippet, onOpenTimelineSelector });
+  React.useEffect(() => {
+    callbacksRef.current = { onRunInTerminal, onClearSnippet, onOpenTimelineSelector };
+  }, [onRunInTerminal, onClearSnippet, onOpenTimelineSelector]);
+
+  const handleRunInTerminal = React.useCallback((code: string, lang: string) => {
+    callbacksRef.current.onRunInTerminal?.(code, lang);
+  }, []);
+
+  const handleClearSnippet = React.useCallback(() => {
+    callbacksRef.current.onClearSnippet?.();
+  }, []);
+
+
+  const markdownComponents = React.useMemo(() => ({
+    // H1: Display Heading with subtle gradient underline
           h1({ children }) {
             return (
               <h1 className="text-base sm:text-lg font-black tracking-tight text-white mt-4 mb-2 pb-1.5 border-b border-purple-500/30 flex items-center gap-2 first:mt-0">
@@ -268,8 +280,8 @@ export const AiMarkdownMessage: React.FC<AiMarkdownMessageProps> = ({
                 <CodeBlockViewer
                   code={codeString}
                   language={lang}
-                  onRunInTerminal={onRunInTerminal}
-                  onClearSnippet={onClearSnippet}
+                  onRunInTerminal={handleRunInTerminal}
+                  onClearSnippet={handleClearSnippet}
                 />
               );
             }
@@ -282,10 +294,13 @@ export const AiMarkdownMessage: React.FC<AiMarkdownMessageProps> = ({
               </code>
             );
           },
-        }}
-      >
+  }), []);
+
+  return (
+    <div className={`leading-relaxed max-w-none break-words text-zinc-200 ${className}`}>
+      <Markdown components={markdownComponents}>
         {content}
       </Markdown>
     </div>
   );
-};
+}, (prev, next) => prev.content === next.content && prev.className === next.className);

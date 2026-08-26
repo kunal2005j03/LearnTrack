@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
 import { useAuth } from '../context/AuthContext';
 import { StreakCard } from '../components/StreakCard';
@@ -10,8 +11,7 @@ import {
   formatTotalWatchTime,
   getCourseRemainingTimeStats,
   formatEstimatedTimeRemaining,
-  getLocalDateString,
-} from '../utils/formatters';
+  getLocalDateString } from '../utils/formatters';
 import { getTodayStudyGoalStats } from '../utils/studyPlanner';
 import { VideoProgress } from '../types';
 import {
@@ -22,21 +22,22 @@ import {
   Sparkles,
   Flame,
   Clock,
-  Target,
-} from 'lucide-react';
+  Target } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const {
     courses,
-    stats,
+    
     cachedVideos,
-    progressMap,
-    continueLearningVideo,
+    
+    
     openVideo,
     setCurrentView,
     setIsAddCourseOpen,
-    setIsSearchOpen,
-  } = useLearnTrack();
+    setIsSearchOpen } = useLearnTrack();
+  const progressMap = useProgressMap();
+  const stats = useStats();
+  const continueLearningVideo = useContinueLearningVideo();
   const { user, userProfile } = useAuth();
   const [selectedTrendCourseId, setSelectedTrendCourseId] = useState<string | undefined>(undefined);
 
@@ -70,8 +71,7 @@ export const DashboardPage: React.FC = () => {
           map[dateStr].videos.push({
             title: p.videoTitle || 'Educational Lesson',
             courseTitle: p.courseTitle || 'Course',
-            duration: p.watchedSeconds || 0,
-          });
+            duration: p.watchedSeconds || 0 });
         }
       }
     });
@@ -99,19 +99,17 @@ export const DashboardPage: React.FC = () => {
       remainingSeconds: totalRemainingSec,
       unwatchedVideos: totalUnwatchedCount,
       formatted: formatEstimatedTimeRemaining(totalRemainingSec, false),
-      formattedVerbose: formatEstimatedTimeRemaining(totalRemainingSec, true),
-    };
+      formattedVerbose: formatEstimatedTimeRemaining(totalRemainingSec, true) };
   }, [courses, cachedVideos, progressMap]);
 
-  // Remaining stats for continue learning course
+  // Remaining for continue learning course
   const continueCourseRemaining = useMemo(() => {
     if (!continueLearningVideo) return null;
     return getCourseRemainingTimeStats(
       continueLearningVideo.course,
       cachedVideos[continueLearningVideo.course.id],
-      progressMap
-    );
-  }, [continueLearningVideo, cachedVideos, progressMap]);
+      );
+  }, [ cachedVideos, ]);
 
   // Dynamic greeting based on current time
   const hour = new Date().getHours();
@@ -252,8 +250,7 @@ export const DashboardPage: React.FC = () => {
                     <div
                       className="h-full bg-gradient-to-r from-[var(--accent)] to-white rounded-full transition-all duration-300"
                       style={{
-                        width: `${Math.min(100, continueLearningVideo.progress.percentage)}%`,
-                      }}
+                        width: `${Math.min(100, continueLearningVideo.progress.percentage)}%` }}
                     />
                   </div>
                 </div>
@@ -267,7 +264,7 @@ export const DashboardPage: React.FC = () => {
                         continueLearningVideo.video.id
                       )
                     }
-                    className="bg-[var(--ink)] text-[var(--bg)] px-6 py-3 rounded-full font-semibold text-sm inline-flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0 transition shadow-lg cursor-pointer"
+                    className="min-h-[44px] bg-[var(--ink)] text-[var(--bg)] px-6 py-3 rounded-full font-semibold text-sm inline-flex items-center gap-2 hover:-translate-y-0.5 active:scale-95 transition shadow-lg cursor-pointer touch-manipulation"
                   >
                     <Play className="w-4 h-4 fill-current" />
                     Continue Watching
