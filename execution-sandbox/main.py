@@ -86,10 +86,19 @@ async def run_code(req: ExecutionRequest):
             except Exception as e:
                 go_version = f"unknown ({e})"
             
+            try:
+                env_check = subprocess.run([which_go, "env", "GOROOT", "GOPATH", "GOMOD", "GOPROXY", "GOMODCACHE"], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=2)
+                go_env_summary = env_check.stdout.strip().replace("\n", " ")
+            except Exception as e:
+                go_env_summary = f"unknown ({e})"
+            
+            # Check if go.mod exists
+            gomod_exists = os.path.exists(os.path.join(temp_dir, "go.mod"))
+            
             # 4. Prepare compiler command
             compile_cmd = [which_go, "build", "-o", "main", "main.go"]
             logger.info(f"[GO] preparing compiler command: {' '.join(compile_cmd)}")
-            logger.info(f"[GO] environment info: which_go={which_go}, version={go_version}, cwd={temp_dir}, GOCACHE={env['GOCACHE']}, GO111MODULE={env['GO111MODULE']}")
+            logger.info(f"[GO] environment info: which_go={which_go} | version={go_version} | cwd={temp_dir} | go_env(GOROOT,GOPATH,GOMOD,GOPROXY,GOMODCACHE)=[{go_env_summary}] | go.mod_exists={gomod_exists} | GOCACHE={env['GOCACHE']} | GO111MODULE={env['GO111MODULE']} | GOPROXY={env['GOPROXY']} | GOSUMDB={env['GOSUMDB']}")
             
             # 5. Compiler execution
             compile_start = time.time()
