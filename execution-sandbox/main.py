@@ -39,71 +39,125 @@ if not os.path.exists(SHARED_GOCACHE):
     SHARED_GOCACHE = "/tmp/gocache"
     os.makedirs(SHARED_GOCACHE, exist_ok=True)
 
+# Discover toolchain paths at startup (reused across requests)
+TOOLCHAINS = {
+    "python": shutil.which("python3") or "python3",
+    "go": shutil.which("go") or "go",
+    "g++": shutil.which("g++") or "g++",
+    "gcc": shutil.which("gcc") or "gcc",
+    "javac": shutil.which("javac") or "javac",
+    "java": shutil.which("java") or "java",
+}
+
+# Container instance startup timestamp for cold-start detection
+INSTANCE_START_TIME = time.time()
+REQUEST_COUNTER = 0
+
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "uptimeSeconds": round(time.time() - INSTANCE_START_TIME, 2),
+        "requestsHandled": REQUEST_COUNTER
+    }
 
 @app.post("/run", response_model=ExecutionResponse)
 async def run_code(req: ExecutionRequest):
+    global REQUEST_COUNTER
+    REQUEST_COUNTER += 1
+    
+    t0_req = time.time()
     language = req.language.lower().strip()
     code = req.code
     user_input = req.input
     
-    start_time = time.time()
+    is_cold = REQUEST_COUNTER == 1
     
     if language not in ["python", "py", "java", "go", "golang", "c", "cpp", "c++"]:
         raise HTTPException(status_code=400, detail=f"Unsupported language: {language}")
     
-    is_go = language in ["go", "golang"]
-    if is_go:
-        logger.info("[GO] request received")
+    normalized_lang = "python" if language in ["python", "py"] else \
+                      "go" if language in ["go", "golang"] else \
+                      "cpp" if language in ["cpp", "c++"] else \
+                      "c" if language == "c" else "java"
     
+    logger.info(f"[{normalized_lang.upper()}] [Req #{REQUEST_COUNTER}] request received | cold_start={is_cold}")
+    
+    t1_ws_start = time.time()
     with tempfile.TemporaryDirectory() as temp_dir:
-        if is_go:
-            logger.info(f"[GO] workspace created: {temp_dir}")
+        t1_ws = time.time()
+        ws_create_ms = (t1_ws - t1_ws_start) * 1000
         
         env = os.environ.copy()
         
-        if is_go:
-            # 1. Write source file
-            file_path = os.path.join(temp_dir, "main.go")
-            with open(file_path, "w") as f:
-                f.write(code)
-            logger.info(f"[GO] source written to {file_path} ({len(code)} bytes)")
+        # 1. Write source file
+        t2_src_start = time.time()
+        if normalized_lang == "python":
+            source_file = "main.py"
+        elif normalized_lang == "go":
+            source_file = "main.go"
+        elif normalized_lang == "java":
+            source_file = "Main.java"
+        elif normalized_lang == "cpp":
+            source_file = "main.cpp"
+        else:
+            source_file = "main.c"
             
-            # 2. Configure Go environment for fast, deterministic, offline standalone builds
+        file_path = os.path.join(temp_dir, source_file)
+        with open(file_path, "w") as f:
+            f.write(code)
+            
+        t2_src = time.time()
+        src_write_ms = (t2_src - t2_src_start) * 1000
+        
+        compile_ms = 0.0
+        exec_ms = 0.0
+        stdout = ""
+        stderr = ""
+        exit_code = 0
+        
+        # =====================================================================
+        # PYTHON: Fast interpreted execution
+        # =====================================================================
+        if normalized_lang == "python":
+            # -B avoids writing .pyc files to temp directory
+            # -u ensures unbuffered stdout/stderr
+            exec_cmd = [TOOLCHAINS["python"], "-B", "-u", "main.py"]
+            t5_exec_start = time.time()
+            try:
+                proc = subprocess.run(
+                    exec_cmd,
+                    input=user_input.encode('utf-8') if user_input else b'',
+                    cwd=temp_dir,
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=MAX_TIMEOUT_S
+                )
+                t6_exec_end = time.time()
+                exec_ms = (t6_exec_end - t5_exec_start) * 1000
+                stdout = proc.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                stderr = proc.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                exit_code = proc.returncode
+            except subprocess.TimeoutExpired as te:
+                exec_ms = (time.time() - t5_exec_start) * 1000
+                stdout = te.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES] if te.stdout else ""
+                stderr = f"Execution timed out after {MAX_TIMEOUT_S}s."
+                exit_code = 124
+
+        # =====================================================================
+        # GO: Deterministic offline compilation + stripped binary
+        # =====================================================================
+        elif normalized_lang == "go":
             env["GO111MODULE"] = "off"
             env["GOPROXY"] = "off"
             env["GOSUMDB"] = "off"
             env["GOCACHE"] = SHARED_GOCACHE
             env["GOTMPDIR"] = temp_dir
             
-            # 3. Discover Go binary and toolchain info
-            which_go = shutil.which("go") or "go"
-            try:
-                ver_check = subprocess.run([which_go, "version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=2)
-                go_version = ver_check.stdout.strip() or ver_check.stderr.strip()
-            except Exception as e:
-                go_version = f"unknown ({e})"
-            
-            try:
-                env_check = subprocess.run([which_go, "env", "GOROOT", "GOPATH", "GOMOD", "GOPROXY", "GOMODCACHE"], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=2)
-                go_env_summary = env_check.stdout.strip().replace("\n", " ")
-            except Exception as e:
-                go_env_summary = f"unknown ({e})"
-            
-            # Check if go.mod exists
-            gomod_exists = os.path.exists(os.path.join(temp_dir, "go.mod"))
-            
-            # 4. Prepare compiler command
-            compile_cmd = [which_go, "build", "-o", "main", "main.go"]
-            logger.info(f"[GO] preparing compiler command: {' '.join(compile_cmd)}")
-            logger.info(f"[GO] environment info: which_go={which_go} | version={go_version} | cwd={temp_dir} | go_env(GOROOT,GOPATH,GOMOD,GOPROXY,GOMODCACHE)=[{go_env_summary}] | go.mod_exists={gomod_exists} | GOCACHE={env['GOCACHE']} | GO111MODULE={env['GO111MODULE']} | GOPROXY={env['GOPROXY']} | GOSUMDB={env['GOSUMDB']}")
-            
-            # 5. Compiler execution
-            compile_start = time.time()
-            logger.info(f"[GO] compiler started: {' '.join(compile_cmd)}")
-            
+            # -ldflags="-s -w" strips symbol table and DWARF debug info for faster linking
+            compile_cmd = [TOOLCHAINS["go"], "build", "-ldflags=-s -w", "-o", "main", "main.go"]
+            t3_build_start = time.time()
             try:
                 compile_proc = subprocess.run(
                     compile_cmd,
@@ -113,132 +167,246 @@ async def run_code(req: ExecutionRequest):
                     stderr=subprocess.PIPE,
                     timeout=MAX_TIMEOUT_S
                 )
-                compile_duration = time.time() - compile_start
-                compile_stdout = compile_proc.stdout.decode('utf-8', errors='replace')
-                compile_stderr = compile_proc.stderr.decode('utf-8', errors='replace')
-                compile_exit = compile_proc.returncode
+                t4_build_end = time.time()
+                compile_ms = (t4_build_end - t3_build_start) * 1000
                 
-                logger.info(f"[GO] compiler finished in {compile_duration:.4f}s | exitCode={compile_exit} | stdout='{compile_stdout}' | stderr='{compile_stderr}'")
-                
-                if compile_exit != 0:
-                    execution_time_ms = int((time.time() - start_time) * 1000)
-                    logger.info(f"[GO] cleanup complete (compilation error)")
-                    return ExecutionResponse(
-                        stdout=compile_stdout[:MAX_OUTPUT_BYTES],
-                        stderr=compile_stderr[:MAX_OUTPUT_BYTES],
-                        exitCode=compile_exit,
-                        executionTimeMs=execution_time_ms
-                    )
-            except subprocess.TimeoutExpired as te:
-                compile_duration = time.time() - compile_start
-                logger.error(f"[GO] compiler timed out after {compile_duration:.4f}s")
-                logger.info(f"[GO] cleanup complete (timeout)")
-                return ExecutionResponse(
-                    stdout="",
-                    stderr=f"Go compilation timed out after {MAX_TIMEOUT_S}s.\n[GOCACHE/module resolution delay detected]",
-                    exitCode=124,
-                    executionTimeMs=int((time.time() - start_time) * 1000)
-                )
-            
-            # 6. Execute compiled binary
-            exec_cmd = ["./main"]
-            exec_start = time.time()
-            logger.info(f"[GO] executable started: {' '.join(exec_cmd)}")
-            
+                if compile_proc.returncode != 0:
+                    stdout = compile_proc.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                    stderr = compile_proc.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                    exit_code = compile_proc.returncode
+                else:
+                    # Run compiled binary
+                    exec_cmd = ["./main"]
+                    t5_exec_start = time.time()
+                    try:
+                        run_proc = subprocess.run(
+                            exec_cmd,
+                            input=user_input.encode('utf-8') if user_input else b'',
+                            cwd=temp_dir,
+                            env=env,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            timeout=MAX_TIMEOUT_S
+                        )
+                        t6_exec_end = time.time()
+                        exec_ms = (t6_exec_end - t5_exec_start) * 1000
+                        stdout = run_proc.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                        stderr = run_proc.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                        exit_code = run_proc.returncode
+                    except subprocess.TimeoutExpired as te:
+                        exec_ms = (time.time() - t5_exec_start) * 1000
+                        stdout = te.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES] if te.stdout else ""
+                        stderr = f"Execution timed out after {MAX_TIMEOUT_S}s."
+                        exit_code = 124
+            except subprocess.TimeoutExpired:
+                compile_ms = (time.time() - t3_build_start) * 1000
+                stderr = f"Go compilation timed out after {MAX_TIMEOUT_S}s."
+                exit_code = 124
+
+        # =====================================================================
+        # C++: Direct g++ with -pipe, -O0, and stripped binary
+        # =====================================================================
+        elif normalized_lang == "cpp":
+            # -O0: no optimization passes (fastest compilation)
+            # -pipe: avoid writing intermediate .s assembly files to disk
+            # -s: strip binary during link
+            compile_cmd = [TOOLCHAINS["g++"], "-O0", "-pipe", "-s", "main.cpp", "-o", "main"]
+            t3_build_start = time.time()
             try:
-                run_proc = subprocess.run(
-                    exec_cmd,
-                    input=user_input.encode('utf-8') if user_input else b'',
+                compile_proc = subprocess.run(
+                    compile_cmd,
                     cwd=temp_dir,
                     env=env,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     timeout=MAX_TIMEOUT_S
                 )
-                exec_duration = time.time() - exec_start
-                stdout = run_proc.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
-                stderr = run_proc.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
-                exit_code = run_proc.returncode
+                t4_build_end = time.time()
+                compile_ms = (t4_build_end - t3_build_start) * 1000
                 
-                logger.info(f"[GO] process finished in {exec_duration:.4f}s | exitCode={exit_code} | stdout='{stdout.strip()}' | stderr='{stderr.strip()}'")
-            except subprocess.TimeoutExpired as te:
-                exec_duration = time.time() - exec_start
-                stdout = te.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES] if te.stdout else ""
-                stderr = f"Execution timed out after {MAX_TIMEOUT_S}s."
+                if compile_proc.returncode != 0:
+                    stdout = compile_proc.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                    stderr = compile_proc.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                    exit_code = compile_proc.returncode
+                else:
+                    exec_cmd = ["./main"]
+                    t5_exec_start = time.time()
+                    try:
+                        run_proc = subprocess.run(
+                            exec_cmd,
+                            input=user_input.encode('utf-8') if user_input else b'',
+                            cwd=temp_dir,
+                            env=env,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            timeout=MAX_TIMEOUT_S
+                        )
+                        t6_exec_end = time.time()
+                        exec_ms = (t6_exec_end - t5_exec_start) * 1000
+                        stdout = run_proc.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                        stderr = run_proc.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                        exit_code = run_proc.returncode
+                    except subprocess.TimeoutExpired as te:
+                        exec_ms = (time.time() - t5_exec_start) * 1000
+                        stdout = te.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES] if te.stdout else ""
+                        stderr = f"Execution timed out after {MAX_TIMEOUT_S}s."
+                        exit_code = 124
+            except subprocess.TimeoutExpired:
+                compile_ms = (time.time() - t3_build_start) * 1000
+                stderr = f"C++ compilation timed out after {MAX_TIMEOUT_S}s."
                 exit_code = 124
-                logger.error(f"[GO] process timed out after {exec_duration:.4f}s")
-            
-            execution_time_ms = int((time.time() - start_time) * 1000)
-            logger.info(f"[GO] cleanup complete (total request time: {execution_time_ms}ms)")
-            
-            return ExecutionResponse(
-                stdout=stdout,
-                stderr=stderr,
-                exitCode=exit_code,
-                executionTimeMs=execution_time_ms
-            )
-            
-        elif language in ["python", "py"]:
-            file_path = os.path.join(temp_dir, "main.py")
-            with open(file_path, "w") as f:
-                f.write(code)
-            command = ["python3", "-u", "main.py"]
-            
-        elif language == "java":
-            file_path = os.path.join(temp_dir, "Main.java")
-            with open(file_path, "w") as f:
-                f.write(code)
-            command = ["sh", "-c", "javac Main.java && java Main"]
-            
-        elif language in ["cpp", "c++"]:
-            file_path = os.path.join(temp_dir, "main.cpp")
-            with open(file_path, "w") as f:
-                f.write(code)
-            command = ["sh", "-c", "g++ -O0 main.cpp -o main && ./main"]
-            
-        elif language == "c":
-            file_path = os.path.join(temp_dir, "main.c")
-            with open(file_path, "w") as f:
-                f.write(code)
-            command = ["sh", "-c", "gcc -O0 main.c -o main && ./main"]
 
-        try:
-            # We use subprocess.run with timeout
-            process = subprocess.run(
-                command,
-                input=user_input.encode('utf-8') if user_input else b'',
-                cwd=temp_dir,
-                env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=MAX_TIMEOUT_S
-            )
-            
-            stdout = process.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
-            stderr = process.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
-            exit_code = process.returncode
-            
-        except subprocess.TimeoutExpired as e:
-            stdout = e.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES] if e.stdout else ''
-            stderr = e.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES] if e.stderr else ''
-            stderr += f"\n[Execution Timed Out after {MAX_TIMEOUT_S}s. Infinite loop or long operation detected.]"
-            exit_code = 124
-        except Exception as e:
-            stdout = ''
-            stderr = f"Execution error: {str(e)}"
-            exit_code = 1
-            
-        execution_time_ms = int((time.time() - start_time) * 1000)
-        
-        return ExecutionResponse(
-            stdout=stdout,
-            stderr=stderr,
-            exitCode=exit_code,
-            executionTimeMs=execution_time_ms
-        )
+        # =====================================================================
+        # C: Direct gcc with -pipe, -O0, and stripped binary
+        # =====================================================================
+        elif normalized_lang == "c":
+            compile_cmd = [TOOLCHAINS["gcc"], "-O0", "-pipe", "-s", "main.c", "-o", "main"]
+            t3_build_start = time.time()
+            try:
+                compile_proc = subprocess.run(
+                    compile_cmd,
+                    cwd=temp_dir,
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=MAX_TIMEOUT_S
+                )
+                t4_build_end = time.time()
+                compile_ms = (t4_build_end - t3_build_start) * 1000
+                
+                if compile_proc.returncode != 0:
+                    stdout = compile_proc.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                    stderr = compile_proc.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                    exit_code = compile_proc.returncode
+                else:
+                    exec_cmd = ["./main"]
+                    t5_exec_start = time.time()
+                    try:
+                        run_proc = subprocess.run(
+                            exec_cmd,
+                            input=user_input.encode('utf-8') if user_input else b'',
+                            cwd=temp_dir,
+                            env=env,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            timeout=MAX_TIMEOUT_S
+                        )
+                        t6_exec_end = time.time()
+                        exec_ms = (t6_exec_end - t5_exec_start) * 1000
+                        stdout = run_proc.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                        stderr = run_proc.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                        exit_code = run_proc.returncode
+                    except subprocess.TimeoutExpired as te:
+                        exec_ms = (time.time() - t5_exec_start) * 1000
+                        stdout = te.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES] if te.stdout else ""
+                        stderr = f"Execution timed out after {MAX_TIMEOUT_S}s."
+                        exit_code = 124
+            except subprocess.TimeoutExpired:
+                compile_ms = (time.time() - t3_build_start) * 1000
+                stderr = f"C compilation timed out after {MAX_TIMEOUT_S}s."
+                exit_code = 124
+
+        # =====================================================================
+        # JAVA: javac + java with Tier 1 C1 JIT and Serial GC optimization
+        # =====================================================================
+        elif normalized_lang == "java":
+            # Optimization flags for javac and java:
+            # -J-XX:TieredStopAtLevel=1: Disable heavy C2 JIT optimization in compiler JVM
+            # -J-XX:+UseSerialGC: Lightweight single-threaded GC for instant startup
+            compile_cmd = [
+                TOOLCHAINS["javac"],
+                "-J-XX:TieredStopAtLevel=1",
+                "-J-XX:+UseSerialGC",
+                "-J-Xms16m",
+                "-J-Xmx128m",
+                "Main.java"
+            ]
+            t3_build_start = time.time()
+            try:
+                compile_proc = subprocess.run(
+                    compile_cmd,
+                    cwd=temp_dir,
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=MAX_TIMEOUT_S
+                )
+                t4_build_end = time.time()
+                compile_ms = (t4_build_end - t3_build_start) * 1000
+                
+                if compile_proc.returncode != 0:
+                    stdout = compile_proc.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                    stderr = compile_proc.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                    exit_code = compile_proc.returncode
+                else:
+                    # java execution flags:
+                    # -XX:TieredStopAtLevel=1: Fast C1 JIT startup for short-lived script execution
+                    # -XX:+UseSerialGC: Avoid thread pool creation overhead
+                    exec_cmd = [
+                        TOOLCHAINS["java"],
+                        "-XX:TieredStopAtLevel=1",
+                        "-XX:+UseSerialGC",
+                        "-Xms16m",
+                        "-Xmx128m",
+                        "-cp",
+                        ".",
+                        "Main"
+                    ]
+                    t5_exec_start = time.time()
+                    try:
+                        run_proc = subprocess.run(
+                            exec_cmd,
+                            input=user_input.encode('utf-8') if user_input else b'',
+                            cwd=temp_dir,
+                            env=env,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            timeout=MAX_TIMEOUT_S
+                        )
+                        t6_exec_end = time.time()
+                        exec_ms = (t6_exec_end - t5_exec_start) * 1000
+                        stdout = run_proc.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                        stderr = run_proc.stderr.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES]
+                        exit_code = run_proc.returncode
+                    except subprocess.TimeoutExpired as te:
+                        exec_ms = (time.time() - t5_exec_start) * 1000
+                        stdout = te.stdout.decode('utf-8', errors='replace')[:MAX_OUTPUT_BYTES] if te.stdout else ""
+                        stderr = f"Execution timed out after {MAX_TIMEOUT_S}s."
+                        exit_code = 124
+            except subprocess.TimeoutExpired:
+                compile_ms = (time.time() - t3_build_start) * 1000
+                stderr = f"Java compilation timed out after {MAX_TIMEOUT_S}s."
+                exit_code = 124
+
+    # Workspace cleanup occurs when exiting the with block
+    t8_cleanup_end = time.time()
+    total_duration_ms = (t8_cleanup_end - t0_req) * 1000
+    cleanup_ms = (t8_cleanup_end - t1_ws) * 1000 - compile_ms - exec_ms - src_write_ms
+    cleanup_ms = max(0.1, cleanup_ms)
+    
+    # Emit unified profiling summary
+    logger.info(
+        f"[PROFILER][{normalized_lang.upper()}] "
+        f"total={total_duration_ms:.1f}ms | "
+        f"ws_create={ws_create_ms:.2f}ms | "
+        f"src_write={src_write_ms:.2f}ms | "
+        f"compile={compile_ms:.1f}ms | "
+        f"execute={exec_ms:.1f}ms | "
+        f"cleanup={cleanup_ms:.2f}ms | "
+        f"exit_code={exit_code} | "
+        f"cold_start={is_cold}"
+    )
+    
+    return ExecutionResponse(
+        stdout=stdout,
+        stderr=stderr,
+        exitCode=exit_code,
+        executionTimeMs=int(total_duration_ms)
+    )
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
