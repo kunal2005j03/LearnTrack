@@ -921,7 +921,7 @@ export const VideoPlayerPage: React.FC = () => {
                     ? 'w-full h-full'
                     : isFullscreenOverlayOpen
                       ? isMobilePortrait
-                        ? 'w-[min(94vw,480px)] aspect-video mt-[calc(0.5rem+env(safe-area-inset-top,0px))] mb-2'
+                        ? 'w-full aspect-video mt-[env(safe-area-inset-top,0px)] shrink-0'
                         : isMobileLandscape
                           ? 'w-[min(45vw,400px)] aspect-video my-auto ml-[env(safe-area-inset-left,1rem)] shrink-0'
                           : isTabletPortrait
@@ -950,7 +950,7 @@ export const VideoPlayerPage: React.FC = () => {
                     onEnded={handlePlayerEnded}
                     autoplay={true}
                     className={`w-full h-full !border-none ${
-                      isFullscreen ? '!rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)]' : '!rounded-none'
+                      isFullscreen && !isMobilePortrait ? '!rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)]' : '!rounded-none'
                     }`}
                   />
                 ) : (
@@ -983,7 +983,7 @@ export const VideoPlayerPage: React.FC = () => {
                   }
                   className={`z-50 pointer-events-auto flex flex-col transition-all duration-300 ease-out shadow-2xl ${
                     isMobilePortrait
-                      ? 'relative w-full flex-1 min-h-0 max-w-[520px] mx-auto animate-in slide-in-from-bottom duration-300'
+                      ? 'relative w-full flex-1 min-h-0 animate-in slide-in-from-bottom duration-300'
                       : isMobileLandscape
                         ? 'relative h-full flex-1 min-w-0 max-w-[400px] animate-in slide-in-from-right duration-200 ml-auto'
                         : isTabletPortrait
@@ -993,64 +993,76 @@ export const VideoPlayerPage: React.FC = () => {
                             : 'absolute right-4 top-4 bottom-[90px] animate-in slide-in-from-right duration-200' // Desktop
                   }`}
                 >
-                  <div className={`bg-zinc-950/95 ${isDesktop ? 'backdrop-blur-xl' : 'backdrop-blur-md'} border-t border-x sm:border border-white/15 shadow-2xl flex flex-col h-full overflow-hidden transition-all ${
-                    (isMobilePortrait || isTabletPortrait) ? 'rounded-t-2xl sm:rounded-2xl pb-[env(safe-area-inset-bottom,0px)]' : 'rounded-2xl'
+                  <div className={`bg-zinc-950/95 ${isDesktop ? 'backdrop-blur-xl' : 'backdrop-blur-md'} shadow-2xl flex flex-col h-full overflow-hidden transition-all ${
+                    isMobilePortrait 
+                      ? 'pb-[env(safe-area-inset-bottom,0px)]'
+                      : isTabletPortrait 
+                        ? 'border-t border-x sm:border border-white/15 rounded-t-2xl sm:rounded-2xl pb-[env(safe-area-inset-bottom,0px)]'
+                        : 'border-t border-x sm:border border-white/15 rounded-2xl'
                   }`}>
                     {/* Floating Panel Header: Tab Switching Bar */}
                     <div className="p-2.5 border-b border-white/10 flex items-center justify-between gap-1.5 shrink-0 bg-black/40">
-                      <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar py-0.5">
-                        {chapters.length > 0 && (
+                      {isMobilePortrait ? (
+                        <div className="flex items-center px-2 py-1">
+                          <h2 className="text-xl font-bold text-white">
+                            {fullscreenOverlayTab === 'in_this_video' ? 'Chapters' : fullscreenOverlayTab === 'playlist' ? 'Course Playlist' : 'AI Assistant'}
+                          </h2>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar py-0.5">
+                          {chapters.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFullscreenOverlayTab('in_this_video');
+                                setDoubtContext(null);
+                              }}
+                              className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
+                                fullscreenOverlayTab === 'in_this_video'
+                                  ? 'bg-cyan-500 text-zinc-950 font-bold shadow-xs'
+                                  : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
+                              }`}
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Chapters ({chapters.length})</span>
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => {
-                              setFullscreenOverlayTab('in_this_video');
+                              setFullscreenOverlayTab('playlist');
                               setDoubtContext(null);
                             }}
                             className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
-                              fullscreenOverlayTab === 'in_this_video'
-                                ? 'bg-cyan-500 text-zinc-950 font-bold shadow-xs'
+                              fullscreenOverlayTab === 'playlist'
+                                ? 'bg-indigo-500 text-white font-bold shadow-xs'
                                 : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
                             }`}
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>Chapters ({chapters.length})</span>
+                            <List className="w-3.5 h-3.5" />
+                            <span>Playlist ({currentIndex + 1}/{videos.length})</span>
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFullscreenOverlayTab('playlist');
-                            setDoubtContext(null);
-                          }}
-                          className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
-                            fullscreenOverlayTab === 'playlist'
-                              ? 'bg-indigo-500 text-white font-bold shadow-xs'
-                              : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
-                          }`}
-                        >
-                          <List className="w-3.5 h-3.5" />
-                          <span>Playlist ({currentIndex + 1}/{videos.length})</span>
-                        </button>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDoubtContext(null);
-                            setFullscreenOverlayTab('ai_assistant');
-                            if (typeof window !== 'undefined') {
-                              window.dispatchEvent(new CustomEvent('learntrack_open_ai_chat', { detail: { clearDoubt: true } }));
-                            }
-                          }}
-                          className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
-                            fullscreenOverlayTab === 'ai_assistant'
-                              ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold shadow-xs'
-                              : 'bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 border border-purple-500/30'
-                          }`}
-                        >
-                          <Bot className="w-3.5 h-3.5 text-purple-300" />
-                          <span>AI Assistant</span>
-                        </button>
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDoubtContext(null);
+                              setFullscreenOverlayTab('ai_assistant');
+                              if (typeof window !== 'undefined') {
+                                window.dispatchEvent(new CustomEvent('learntrack_open_ai_chat', { detail: { clearDoubt: true } }));
+                              }
+                            }}
+                            className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
+                              fullscreenOverlayTab === 'ai_assistant'
+                                ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold shadow-xs'
+                                : 'bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 border border-purple-500/30'
+                            }`}
+                          >
+                            <Bot className="w-3.5 h-3.5 text-purple-300" />
+                            <span>AI Assistant</span>
+                          </button>
+                        </div>
+                      )}
 
                       <button
                         type="button"
@@ -1062,7 +1074,7 @@ export const VideoPlayerPage: React.FC = () => {
                         title="Close overlay"
                         aria-label="Close overlay"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-6 h-6" />
                       </button>
                     </div>
 
