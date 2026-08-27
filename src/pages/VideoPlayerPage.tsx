@@ -103,115 +103,49 @@ export const VideoPlayerPage: React.FC = () => {
   const [showSpeedDropdown, setShowSpeedDropdown] = useState<boolean>(false);
   const [isTitleExpanded, setIsTitleExpanded] = useState<boolean>(false);
   const [doubtContext, setDoubtContext] = useState<DoubtContext | null>(null);
-  const [isPortrait, setIsPortrait] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(orientation: portrait)').matches;
-    }
-    return false;
+  const [layoutState, setLayoutState] = useState({
+    isMobile: typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false,
+    isTablet: typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px) and (max-width: 1279px)').matches : false,
+    isDesktop: typeof window !== 'undefined' ? window.matchMedia('(min-width: 1280px)').matches : true,
+    isPortrait: typeof window !== 'undefined' ? window.matchMedia('(orientation: portrait)').matches : false,
   });
 
-  const [isTablet, setIsTablet] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(min-width: 768px) and (max-width: 1279px)').matches;
-    }
-    return false;
-  });
-
-  const [isDesktop, setIsDesktop] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(min-width: 1280px)').matches;
-    }
-    return true;
-  });
-
-  // Efficiently track window orientation natively without thrashing React on every resize pixel
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    const mediaQuery = window.matchMedia('(orientation: portrait)');
-    
-    const handleOrientationChange = (e: MediaQueryListEvent) => {
-      setIsPortrait(e.matches);
+    const mqs = {
+      portrait: window.matchMedia('(orientation: portrait)'),
+      mobile: window.matchMedia('(max-width: 767px)'),
+      tablet: window.matchMedia('(min-width: 768px) and (max-width: 1279px)'),
+      desktop: window.matchMedia('(min-width: 1280px)'),
     };
-
-    // Initialize with current value
-    setIsPortrait(mediaQuery.matches);
-
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleOrientationChange);
-    } else {
-      // Fallback for older browsers
-      mediaQuery.addListener(handleOrientationChange);
-    }
-
+    const update = () => {
+      setLayoutState({
+        isPortrait: mqs.portrait.matches,
+        isMobile: mqs.mobile.matches,
+        isTablet: mqs.tablet.matches,
+        isDesktop: mqs.desktop.matches,
+      });
+    };
+    mqs.portrait.addEventListener('change', update);
+    mqs.mobile.addEventListener('change', update);
+    mqs.tablet.addEventListener('change', update);
+    mqs.desktop.addEventListener('change', update);
     return () => {
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener('change', handleOrientationChange);
-      } else {
-        mediaQuery.removeListener(handleOrientationChange);
-      }
+      mqs.portrait.removeEventListener('change', update);
+      mqs.mobile.removeEventListener('change', update);
+      mqs.tablet.removeEventListener('change', update);
+      mqs.desktop.removeEventListener('change', update);
     };
   }, []);
+  
+  const { isPortrait, isTablet, isDesktop, isMobile } = layoutState;
+  
+  // Derived state for easier layout decisions
+  const isMobilePortrait = isMobile && isPortrait;
+  const isMobileLandscape = isMobile && !isPortrait;
+  const isTabletPortrait = isTablet && isPortrait;
+  const isTabletLandscape = isTablet && !isPortrait;
 
-  // Track desktop breakpoint natively
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(min-width: 1280px)');
-    const handleChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    setIsDesktop(mediaQuery.matches);
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
-    } else {
-      mediaQuery.addListener(handleChange);
-    }
-    return () => {
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener('change', handleChange);
-      } else {
-        mediaQuery.removeListener(handleChange);
-      }
-    };
-  }, []);
-
-  // Track tablet breakpoint natively
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(min-width: 768px) and (max-width: 1279px)');
-    const handleChange = (e: MediaQueryListEvent) => setIsTablet(e.matches);
-    setIsTablet(mediaQuery.matches);
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
-    } else {
-      mediaQuery.addListener(handleChange);
-    }
-    return () => {
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener('change', handleChange);
-      } else {
-        mediaQuery.removeListener(handleChange);
-      }
-    };
-  }, []);
-
-  // Track desktop breakpoint natively
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(min-width: 1024px)');
-    const handleChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    setIsDesktop(mediaQuery.matches);
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
-    } else {
-      mediaQuery.addListener(handleChange);
-    }
-    return () => {
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener('change', handleChange);
-      } else {
-        mediaQuery.removeListener(handleChange);
-      }
-    };
-  }, []);
 
   // Clear doubt context whenever active video changes
   useEffect(() => {
@@ -957,14 +891,14 @@ export const VideoPlayerPage: React.FC = () => {
           >
             {/* Video Player Main Viewport */}
             <div className={`flex-1 min-h-0 relative w-full h-full flex items-center justify-center overflow-hidden bg-black ${
-              isFullscreen && isFullscreenOverlayOpen && !isPortrait && !isDesktop ? 'flex-row p-4 gap-4' : 'flex-col'
+              isFullscreen && isFullscreenOverlayOpen && (isTabletLandscape || isMobileLandscape) ? 'flex-row p-2 gap-2 sm:p-4 sm:gap-4' : 'flex-col'
             }`}>
               {/* AMBIENT BACKGROUND LAYER (Fullscreen Only - dynamically orientation-aware & GPU-optimized) */}
               {isFullscreen && (
                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                   <div 
                     className={`absolute inset-0 transition-all duration-700 ease-in-out ${
-                      isPortrait
+                      (isMobilePortrait || isTabletPortrait)
                         ? 'opacity-70 blur-[30px] saturate-[200%] brightness-110 scale-120'
                         : isDesktop
                           ? 'opacity-80 blur-[80px] saturate-[350%] brightness-120 scale-125'
@@ -983,22 +917,26 @@ export const VideoPlayerPage: React.FC = () => {
               {/* 16:9 Constraint Stage for video to allow ambient glow outside with dynamic responsive shifting & scaling */}
               <div 
                 className={`relative z-10 flex items-center justify-center transition-all duration-300 ease-out transform-gpu shrink-0 ${
-                  isFullscreen
-                    ? isPortrait
-                      ? isFullscreenOverlayOpen
-                        ? 'w-[min(94vw,480px)] aspect-video mt-[calc(0.5rem+env(safe-area-inset-top,0px))] mb-2'
-                        : 'w-[94vw] max-w-[500px] aspect-video my-auto shrink-0'
-                      : isDesktop
-                        ? 'w-[96vw] max-w-[177.78vh] aspect-video max-h-[86vh] my-auto shrink-0'
-                        : isFullscreenOverlayOpen
-                          ? 'flex-1 min-w-0 max-h-[84vh] aspect-video my-auto'
-                          : 'w-[96vw] max-w-[177.78vh] aspect-video max-h-[86vh] my-auto shrink-0'
-                    : 'w-full h-full'
+                  !isFullscreen
+                    ? 'w-full h-full'
+                    : isFullscreenOverlayOpen
+                      ? isMobilePortrait
+                        ? 'w-full aspect-video mt-[env(safe-area-inset-top,0px)] shrink-0'
+                        : isMobileLandscape
+                          ? 'w-[min(45vw,400px)] aspect-video my-auto ml-[env(safe-area-inset-left,1rem)] shrink-0'
+                          : isTabletPortrait
+                            ? 'w-[min(90vw,600px)] aspect-video mt-4 mb-4'
+                            : isTabletLandscape
+                              ? 'flex-1 min-w-0 max-h-[84vh] aspect-video my-auto mx-4'
+                              : 'w-[96vw] max-w-[177.78vh] aspect-video max-h-[86vh] my-auto shrink-0' // Desktop open
+                      : isMobileLandscape
+                        ? 'w-[94vw] max-w-[500px] aspect-video my-auto shrink-0'
+                        : 'w-[96vw] max-w-[177.78vh] aspect-video max-h-[86vh] my-auto shrink-0' // All other closed states
                 }`}
-                style={isFullscreen && !isPortrait && !isDesktop && isFullscreenOverlayOpen ? {
+                style={isFullscreen && isTabletLandscape && isFullscreenOverlayOpen ? {
                   maxWidth: fullscreenOverlayTab === 'ai_assistant' 
-                     ? 'calc(100vw - min(50vw, calc(100vw - 2rem)) - 2rem)' 
-                     : 'calc(100vw - min(380px, calc(100vw - 2rem)) - 2rem)'
+                      ? 'calc(100vw - min(50vw, calc(100vw - 2rem)) - 2rem)' 
+                      : 'calc(100vw - min(380px, calc(100vw - 2rem)) - 2rem)'
                 } : undefined}
               >
                 {activeVideoId ? (
@@ -1012,7 +950,7 @@ export const VideoPlayerPage: React.FC = () => {
                     onEnded={handlePlayerEnded}
                     autoplay={true}
                     className={`w-full h-full !border-none ${
-                      isFullscreen ? '!rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)]' : '!rounded-none'
+                      isFullscreen && !isMobilePortrait ? '!rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)]' : '!rounded-none'
                     }`}
                   />
                 ) : (
@@ -1022,8 +960,6 @@ export const VideoPlayerPage: React.FC = () => {
                   </div>
                 )}
               </div>
-
-
 
               {/* FULLSCREEN FLOATING OVERLAYS (Chapters, Playlist & AI Assistant) */}
               {isFullscreen && isFullscreenOverlayOpen && (
@@ -1035,80 +971,98 @@ export const VideoPlayerPage: React.FC = () => {
                   }}
                   onMouseMove={handleFullscreenMouseMove}
                   style={
-                    isPortrait
-                      ? undefined
-                      : {
-                          width:
-                            fullscreenOverlayTab === 'ai_assistant'
-                              ? isDesktop ? 'min(920px, calc(100vw - 2rem))' : 'min(50vw, calc(100vw - 2rem))'
-                              : 'min(380px, calc(100vw - 2rem))' }
+                    isDesktop
+                      ? {
+                          width: fullscreenOverlayTab === 'ai_assistant' ? 'min(920px, calc(100vw - 2rem))' : 'min(380px, calc(100vw - 2rem))'
+                        }
+                      : isTabletLandscape
+                        ? {
+                            width: fullscreenOverlayTab === 'ai_assistant' ? 'min(50vw, calc(100vw - 2rem))' : 'min(380px, calc(100vw - 2rem))'
+                          }
+                        : undefined
                   }
                   className={`z-50 pointer-events-auto flex flex-col transition-all duration-300 ease-out shadow-2xl ${
-                    isPortrait
-                      ? 'relative w-full flex-1 min-h-0 max-w-[520px] mx-auto animate-in slide-in-from-bottom duration-300'
-                      : isDesktop
-                        ? 'absolute right-4 top-4 bottom-[90px] animate-in slide-in-from-right duration-200'
-                        : 'relative h-full shrink-0 animate-in slide-in-from-right duration-200'
+                    isMobilePortrait
+                      ? 'relative w-full flex-1 min-h-0 animate-in slide-in-from-bottom duration-300'
+                      : isMobileLandscape
+                        ? 'relative h-full flex-1 min-w-0 max-w-[400px] animate-in slide-in-from-right duration-200 ml-auto'
+                        : isTabletPortrait
+                          ? 'relative w-full flex-1 min-h-0 max-w-[640px] mx-auto animate-in slide-in-from-bottom duration-300'
+                          : isTabletLandscape
+                            ? 'relative h-full shrink-0 animate-in slide-in-from-right duration-200'
+                            : 'absolute right-4 top-4 bottom-[90px] animate-in slide-in-from-right duration-200' // Desktop
                   }`}
                 >
-                  <div className={`bg-zinc-950/95 ${isDesktop ? 'backdrop-blur-xl' : 'backdrop-blur-md'} border-t border-x sm:border border-white/15 shadow-2xl flex flex-col h-full overflow-hidden transition-all ${
-                    isPortrait ? 'rounded-t-2xl sm:rounded-2xl pb-[env(safe-area-inset-bottom,0px)]' : 'rounded-2xl'
+                  <div className={`bg-zinc-950/95 ${isDesktop ? 'backdrop-blur-xl' : 'backdrop-blur-md'} shadow-2xl flex flex-col h-full overflow-hidden transition-all ${
+                    isMobilePortrait 
+                      ? 'pb-[env(safe-area-inset-bottom,0px)]'
+                      : isTabletPortrait 
+                        ? 'border-t border-x sm:border border-white/15 rounded-t-2xl sm:rounded-2xl pb-[env(safe-area-inset-bottom,0px)]'
+                        : 'border-t border-x sm:border border-white/15 rounded-2xl'
                   }`}>
                     {/* Floating Panel Header: Tab Switching Bar */}
                     <div className="p-2.5 border-b border-white/10 flex items-center justify-between gap-1.5 shrink-0 bg-black/40">
-                      <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar py-0.5">
-                        {chapters.length > 0 && (
+                      {isMobilePortrait ? (
+                        <div className="flex items-center px-2 py-1">
+                          <h2 className="text-xl font-bold text-white">
+                            {fullscreenOverlayTab === 'in_this_video' ? 'Chapters' : fullscreenOverlayTab === 'playlist' ? 'Course Playlist' : 'AI Assistant'}
+                          </h2>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar py-0.5">
+                          {chapters.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFullscreenOverlayTab('in_this_video');
+                                setDoubtContext(null);
+                              }}
+                              className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
+                                fullscreenOverlayTab === 'in_this_video'
+                                  ? 'bg-cyan-500 text-zinc-950 font-bold shadow-xs'
+                                  : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
+                              }`}
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Chapters ({chapters.length})</span>
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => {
-                              setFullscreenOverlayTab('in_this_video');
+                              setFullscreenOverlayTab('playlist');
                               setDoubtContext(null);
                             }}
                             className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
-                              fullscreenOverlayTab === 'in_this_video'
-                                ? 'bg-cyan-500 text-zinc-950 font-bold shadow-xs'
+                              fullscreenOverlayTab === 'playlist'
+                                ? 'bg-indigo-500 text-white font-bold shadow-xs'
                                 : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
                             }`}
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>Chapters ({chapters.length})</span>
+                            <List className="w-3.5 h-3.5" />
+                            <span>Playlist ({currentIndex + 1}/{videos.length})</span>
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFullscreenOverlayTab('playlist');
-                            setDoubtContext(null);
-                          }}
-                          className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
-                            fullscreenOverlayTab === 'playlist'
-                              ? 'bg-indigo-500 text-white font-bold shadow-xs'
-                              : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
-                          }`}
-                        >
-                          <List className="w-3.5 h-3.5" />
-                          <span>Playlist ({currentIndex + 1}/{videos.length})</span>
-                        </button>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDoubtContext(null);
-                            setFullscreenOverlayTab('ai_assistant');
-                            if (typeof window !== 'undefined') {
-                              window.dispatchEvent(new CustomEvent('learntrack_open_ai_chat', { detail: { clearDoubt: true } }));
-                            }
-                          }}
-                          className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
-                            fullscreenOverlayTab === 'ai_assistant'
-                              ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold shadow-xs'
-                              : 'bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 border border-purple-500/30'
-                          }`}
-                        >
-                          <Bot className="w-3.5 h-3.5 text-purple-300" />
-                          <span>AI Assistant</span>
-                        </button>
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDoubtContext(null);
+                              setFullscreenOverlayTab('ai_assistant');
+                              if (typeof window !== 'undefined') {
+                                window.dispatchEvent(new CustomEvent('learntrack_open_ai_chat', { detail: { clearDoubt: true } }));
+                              }
+                            }}
+                            className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
+                              fullscreenOverlayTab === 'ai_assistant'
+                                ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold shadow-xs'
+                                : 'bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 border border-purple-500/30'
+                            }`}
+                          >
+                            <Bot className="w-3.5 h-3.5 text-purple-300" />
+                            <span>AI Assistant</span>
+                          </button>
+                        </div>
+                      )}
 
                       <button
                         type="button"
@@ -1120,7 +1074,7 @@ export const VideoPlayerPage: React.FC = () => {
                         title="Close overlay"
                         aria-label="Close overlay"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-6 h-6" />
                       </button>
                     </div>
 
@@ -1267,9 +1221,9 @@ export const VideoPlayerPage: React.FC = () => {
                 <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/15 to-transparent" />
                 
                 <div className={`w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 sm:px-6 pt-2 select-none ${
-                  isPortrait ? 'pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]' : 'pb-[calc(0.85rem+env(safe-area-inset-bottom,0px))]'
+                  (isMobilePortrait || isTabletPortrait) ? 'pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]' : 'pb-[calc(0.85rem+env(safe-area-inset-bottom,0px))]'
                 }`}>
-                  {isPortrait ? (
+                  {(isMobilePortrait || isTabletPortrait) ? (
                     /* PORTRAIT FULLSCREEN: 2-ROW BALANCED CONTROL BAR */
                     <div className="w-full max-w-[480px] mx-auto flex flex-col gap-2 pointer-events-auto select-none">
                       {/* ROW 1: [ Chapters ] [ Playlist ] [ Ask AI ] */}

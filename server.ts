@@ -1104,103 +1104,6 @@ CRITICAL DIRECTIVES FOR CODE EXTRACTION:
   });
 
   // Smart Code Execution Fallback (Local evaluation + Gemini execution simulation)
-  async function runFallbackCodeExecution(code: string, language: string, input: string = '') {
-    const startTime = Date.now();
-    const cleanLang = (language || 'python').toLowerCase().trim();
-    const trimmedCode = code.trim();
-
-    // Fast-path common starter codes
-    if (trimmedCode === 'print("Hello World!")' || trimmedCode === "print('Hello World!')") {
-      return {
-        stdout: "Hello World!\n",
-        stderr: "",
-        exitCode: 0,
-        executionTimeMs: 14,
-      };
-    }
-    if (cleanLang === 'cpp' || cleanLang === 'c++') {
-      if (trimmedCode.includes('std::cout << "Hello World!"')) {
-        return {
-          stdout: "Hello World!\n",
-          stderr: "",
-          exitCode: 0,
-          executionTimeMs: 25,
-        };
-      }
-    }
-    if (cleanLang === 'go' || cleanLang === 'golang') {
-      if (trimmedCode.includes('fmt.Println("Hello World!")')) {
-        return {
-          stdout: "Hello World!\n",
-          stderr: "",
-          exitCode: 0,
-          executionTimeMs: 20,
-        };
-      }
-    }
-    if (cleanLang === 'java') {
-      if (trimmedCode.includes('System.out.println("Hello World!");')) {
-        return {
-          stdout: "Hello World!\n",
-          stderr: "",
-          exitCode: 0,
-          executionTimeMs: 35,
-        };
-      }
-    }
-
-    // Try Gemini Execution Simulation
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (apiKey) {
-      try {
-        const ai = getGenAI();
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.7-flash',
-          contents: `You are an exact terminal code execution engine.
-Execute the following ${cleanLang} code with the given standard input and return the EXACT stdout, stderr, and exitCode.
-
-Language: ${cleanLang}
-Standard Input (stdin):
-${input || '<empty>'}
-
-Code:
-\`\`\`${cleanLang}
-${code}
-\`\`\`
-
-Return a valid JSON object ONLY, formatted like:
-{
-  "stdout": "string (the exact console stdout printed by the program)",
-  "stderr": "string (any compilation error or runtime traceback)",
-  "exitCode": 0,
-  "executionTimeMs": 42
-}`,
-          config: {
-            responseMimeType: 'application/json',
-          },
-        });
-
-        const jsonText = response.text || '';
-        const parsed = JSON.parse(jsonText);
-        return {
-          stdout: typeof parsed.stdout === 'string' ? parsed.stdout : '',
-          stderr: typeof parsed.stderr === 'string' ? parsed.stderr : '',
-          exitCode: typeof parsed.exitCode === 'number' ? parsed.exitCode : 0,
-          executionTimeMs: Date.now() - startTime,
-        };
-      } catch (geminiErr: any) {
-        console.warn('Gemini fallback execution error:', geminiErr);
-      }
-    }
-
-    // Default fallback output
-    return {
-      stdout: `${code.split('\n').filter(l => l.includes('print')).map(l => l.replace(/.*print\((.*)\).*/, '$1').replace(/['"]/g, '')).join('\n')}\n`,
-      stderr: '',
-      exitCode: 0,
-      executionTimeMs: Date.now() - startTime,
-    };
-  }
 
   // Multi-Language Code Execution Endpoint (Delegates to Execution Sandbox)
   app.post("/api/code/run", async (req, res) => {
@@ -1216,10 +1119,19 @@ Return a valid JSON object ONLY, formatted like:
 
     const cleanLang = (language || "python").toLowerCase().trim();
 
+
+    console.log("[CODE-RUN] POST /api/code/run RECEIVED");
+    
     // In production, we require a real Cloud Run URL, not localhost
     let EXECUTION_SERVICE_URL = process.env.EXECUTION_SERVICE_URL;
+    
+    // The user's env var might be incorrectly pointing to learntrack-main. Override if necessary.
+    if (!EXECUTION_SERVICE_URL || EXECUTION_SERVICE_URL.includes("learntrack-main")) {
+        EXECUTION_SERVICE_URL = "https://learntrack-execution-sandbox-gxgprgtggq-uc.a.run.app";
+    }
+
     if (!EXECUTION_SERVICE_URL && process.env.NODE_ENV === 'production') {
-      return res.status(503).json({
+      return res.status(200).json({
         success: false,
         errorType: "EXECUTION_SERVICE_UNAVAILABLE",
         message: "Code execution service is temporarily unavailable. (Missing EXECUTION_SERVICE_URL configuration)",
@@ -1230,7 +1142,7 @@ Return a valid JSON object ONLY, formatted like:
       });
     }
 
-    // Fallback to localhost ONLY for local development
+    // Fallback to localhost ONLY for local development if not provided
     EXECUTION_SERVICE_URL = EXECUTION_SERVICE_URL || "http://localhost:8080";
 
     // Clean up the URL to prevent double slashes or accidental /run inclusion
@@ -1239,10 +1151,13 @@ Return a valid JSON object ONLY, formatted like:
       baseUrl = baseUrl.slice(0, -4).replace(/\/+$/, '');
     }
 
+    console.log(`[CODE-RUN] execution service URL = ${baseUrl}`);
+    console.log("[CODE-RUN] attempting sandbox request");
+
     try {
       // Obtain Google Cloud Run IAM ID token headers for private service-to-service communication
       const authHeaders = await getCloudRunAuthHeaders(baseUrl);
-
+      
       const execResponse = await fetch(`${baseUrl}/run`, {
         method: "POST",
         headers: authHeaders,
@@ -1253,9 +1168,12 @@ Return a valid JSON object ONLY, formatted like:
         }),
       });
 
+      console.log(`[CODE-RUN] sandbox status = ${execResponse.status}`);
+      console.log(`[CODE-RUN] sandbox content-type = ${execResponse.headers.get('content-type')}`);
+
       // Handle Private Cloud Run IAM Authentication Errors (401 / 403)
       if (execResponse.status === 401 || execResponse.status === 403) {
-        return res.status(execResponse.status).json({
+        return res.status(200).json({
           success: false,
           errorType: "EXECUTION_SERVICE_AUTH_REQUIRED",
           message: "Private Cloud Run execution service requires IAM authentication (roles/run.invoker).",
@@ -1267,26 +1185,45 @@ Return a valid JSON object ONLY, formatted like:
       }
 
       if (execResponse.status === 404 || !execResponse.ok) {
-        // Fallback: Smart local / Gemini execution fallback when sandbox container is unavailable
-        const fallbackResult = await runFallbackCodeExecution(code, cleanLang, input);
-        return res.json(fallbackResult);
+        return res.status(200).json({
+          success: false,
+          errorType: "SANDBOX_UNAVAILABLE",
+          message: "Code execution service temporarily unavailable.",
+          stdout: "",
+          stderr: `Code execution service temporarily unavailable (HTTP ${execResponse.status}).`,
+          exitCode: -1,
+          executionTimeMs: 0,
+        });
+      }
+
+      const contentType = execResponse.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+         const text = await execResponse.text();
+         return res.status(200).json({
+            success: false,
+            errorType: "SANDBOX_UNAVAILABLE",
+            message: "Sandbox returned non-JSON.",
+            stdout: "",
+            stderr: `Sandbox returned non-JSON (HTTP ${execResponse.status}): \n\n${text.substring(0,200)}`,
+            exitCode: -1,
+            executionTimeMs: 0,
+         });
       }
 
       const result = await execResponse.json();
       return res.json(result);
+
     } catch (err: any) {
-      console.error("Code execution service error, attempting fallback:", err);
-      try {
-        const fallbackResult = await runFallbackCodeExecution(code, cleanLang, input);
-        return res.json(fallbackResult);
-      } catch (fallbackErr: any) {
-        return res.status(500).json({
-          stdout: "",
-          stderr: fallbackErr.message || "Execution error",
-          exitCode: 1,
-          executionTimeMs: 0,
-        });
-      }
+      console.error("Code execution service error:", err);
+      return res.status(200).json({
+        success: false,
+        errorType: "SANDBOX_UNAVAILABLE",
+        message: "Code execution service temporarily unavailable.",
+        stdout: "",
+        stderr: `Code execution service error: ${err.message}`,
+        exitCode: -1,
+        executionTimeMs: 0,
+      });
     }
   });
   app.post('/api/code/run-python', async (req, res) => {
