@@ -419,8 +419,19 @@ export const InteractiveCodeTerminal: React.FC<InteractiveCodeTerminalProps> = (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, language }),
       });
-      const data = await resp.json();
-      setResult(data);
+      const contentType = resp.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await resp.json();
+        setResult(data);
+      } else {
+        const text = await resp.text();
+        setResult({
+          stdout: '',
+          stderr: `Server Error (${resp.status}): The execution service returned an unexpected non-JSON response.\n\n${text.substring(0, 200)}`,
+          exitCode: 1,
+          executionTimeMs: 0,
+        });
+      }
     } catch (err: any) {
       setResult({
         stdout: '',

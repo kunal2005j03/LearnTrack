@@ -1,0 +1,21 @@
+
+      if (execResponse.status === 404 || !execResponse.ok) {
+        // Fallback: Smart local / Gemini execution fallback when sandbox container is unavailable
+        const fallbackResult = await runFallbackCodeExecution(code, cleanLang, input);
+        return res.json(fallbackResult);
+      }
+
+      const result = await execResponse.json();
+      return res.json(result);
+    } catch (err: any) {
+      console.error("Code execution service error, attempting fallback:", err);
+      try {
+        const fallbackResult = await runFallbackCodeExecution(code, cleanLang, input);
+        return res.json(fallbackResult);
+      } catch (fallbackErr: any) {
+        return res.status(500).json({
+          stdout: "",
+          stderr: fallbackErr.message || "Execution error",
+          exitCode: 1,
+          executionTimeMs: 0,
+        });
