@@ -104,37 +104,39 @@ export const VideoPlayerPage: React.FC = () => {
   const [isTitleExpanded, setIsTitleExpanded] = useState<boolean>(false);
   const [doubtContext, setDoubtContext] = useState<DoubtContext | null>(null);
   const [layoutState, setLayoutState] = useState({
-    isMobile: typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false,
-    isTablet: typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px) and (max-width: 1279px)').matches : false,
-    isDesktop: typeof window !== 'undefined' ? window.matchMedia('(min-width: 1280px)').matches : true,
-    isPortrait: typeof window !== 'undefined' ? window.matchMedia('(orientation: portrait)').matches : false,
+    isMobile: typeof window !== 'undefined' ? window.innerWidth <= 767 : false,
+    isTablet: typeof window !== 'undefined' ? window.innerWidth >= 768 && window.innerWidth <= 1279 : false,
+    isDesktop: typeof window !== 'undefined' ? window.innerWidth >= 1280 : true,
+    isPortrait: typeof window !== 'undefined' ? window.innerHeight >= window.innerWidth : false,
   });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const mqs = {
-      portrait: window.matchMedia('(orientation: portrait)'),
-      mobile: window.matchMedia('(max-width: 767px)'),
-      tablet: window.matchMedia('(min-width: 768px) and (max-width: 1279px)'),
-      desktop: window.matchMedia('(min-width: 1280px)'),
-    };
-    const update = () => {
+    
+    const updateLayout = () => {
       setLayoutState({
-        isPortrait: mqs.portrait.matches,
-        isMobile: mqs.mobile.matches,
-        isTablet: mqs.tablet.matches,
-        isDesktop: mqs.desktop.matches,
+        isMobile: window.innerWidth <= 767,
+        isTablet: window.innerWidth >= 768 && window.innerWidth <= 1279,
+        isDesktop: window.innerWidth >= 1280,
+        isPortrait: window.innerHeight >= window.innerWidth,
       });
     };
-    mqs.portrait.addEventListener('change', update);
-    mqs.mobile.addEventListener('change', update);
-    mqs.tablet.addEventListener('change', update);
-    mqs.desktop.addEventListener('change', update);
+
+    updateLayout();
+
+    let timeoutId: any;
+    const handleResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(updateLayout, 100);
+    };
+
+    window.addEventListener('resize', handleResize, { passive: true });
+    window.addEventListener('orientationchange', updateLayout, { passive: true });
+    
     return () => {
-      mqs.portrait.removeEventListener('change', update);
-      mqs.mobile.removeEventListener('change', update);
-      mqs.tablet.removeEventListener('change', update);
-      mqs.desktop.removeEventListener('change', update);
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', updateLayout);
     };
   }, []);
   
