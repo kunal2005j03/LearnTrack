@@ -138,7 +138,7 @@ function extractPlaylistId(input: string): string | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Basic security and referrer headers - explicitly ensuring strict-origin-when-cross-origin for YouTube IFrame Player
   app.use((req, res, next) => {
