@@ -931,6 +931,8 @@ export const VideoPlayerPage: React.FC = () => {
                             : isTabletLandscape
                               ? 'flex-1 min-w-0 max-h-[84vh] aspect-video my-auto mx-4'
                               : 'w-[96vw] max-w-[177.78vh] aspect-video max-h-[86vh] my-auto shrink-0' // Desktop open
+                      : isMobilePortrait
+                        ? 'w-full aspect-video my-auto shrink-0'
                       : isMobileLandscape
                         ? 'w-[94vw] max-w-[500px] aspect-video my-auto shrink-0'
                         : 'w-[96vw] max-w-[177.78vh] aspect-video max-h-[86vh] my-auto shrink-0' // All other closed states
