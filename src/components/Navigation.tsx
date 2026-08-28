@@ -49,7 +49,7 @@ export const Navigation: React.FC = () => {
               onClick={() => setCurrentView('dashboard')}
               className="flex items-center gap-3 mb-8 text-left group focus:outline-none"
             >
-              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[var(--accent)] to-[var(--accent-gradient-end)] shadow-md shadow-[var(--accent-shadow)] group-hover:scale-105 transition-transform" />
+              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[#A78BFA] to-[#6366F1] shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform" />
               <span className="font-bold text-lg tracking-tight text-[var(--ink)]">
                 LearnTrack
               </span>
@@ -147,11 +147,11 @@ export const Navigation: React.FC = () => {
             {/* Motivation / Promo Card */}
             <div className="relative overflow-hidden rounded-2xl p-3.5 border border-[var(--border)] bg-gradient-to-br from-[var(--surface-mid)] to-[var(--surface-low)] group">
               {/* Ambient accent glow in card */}
-              <div className="absolute -top-5 -right-5 w-16 h-16 bg-[var(--accent)] opacity-20 blur-xl pointer-events-none rounded-full" />
+              <div className="absolute -top-5 -right-5 w-16 h-16 bg-[#A78BFA] opacity-20 blur-xl pointer-events-none rounded-full" />
 
               <div className="relative z-10 space-y-1">
                 <h4 className="text-xs font-semibold text-[var(--ink)] flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
+                  <Sparkles className="w-3.5 h-3.5 text-[#A78BFA]" />
                   Stay Consistent
                 </h4>
                 <p className="text-[11px] text-[var(--ink-dim)] leading-relaxed">
@@ -168,7 +168,7 @@ export const Navigation: React.FC = () => {
                       setCurrentView('courses');
                     }
                   }}
-                  className="pt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] transition"
+                  className="pt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[#A78BFA] hover:text-[#C4B5FD] transition"
                 >
                   Keep Learning →
                 </button>
@@ -206,7 +206,7 @@ export const Navigation: React.FC = () => {
           onClick={() => setCurrentView('dashboard')}
           className="flex items-center gap-2.5 focus:outline-none"
         >
-          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[var(--accent)] to-[var(--accent-gradient-end)]" />
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[#A78BFA] to-[#6366F1]" />
           <span className="font-bold text-base tracking-tight text-[var(--ink)]">
             LearnTrack
           </span>

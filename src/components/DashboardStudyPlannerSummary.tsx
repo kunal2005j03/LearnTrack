@@ -78,8 +78,8 @@ export const DashboardStudyPlannerSummary: React.FC = () => {
             </span>
           )}
           {behindCourses.length > 0 && (
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/15 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3 text-[var(--accent)]" />
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 text-amber-400" />
               {behindCourses.length} Behind Target
             </span>
           )}
@@ -88,9 +88,9 @@ export const DashboardStudyPlannerSummary: React.FC = () => {
 
       {/* Behind Schedule Alert Spotlight (if any courses are falling behind initial target) */}
       {behindCourses.length > 0 && (
-        <div className="p-4 rounded-2xl bg-[var(--accent)]/15 border border-[var(--accent)]/15 space-y-2">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--accent)]">
-            <AlertTriangle className="w-4 h-4 text-[var(--accent)]" />
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400">
+            <AlertTriangle className="w-4 h-4 text-amber-400" />
             Pacing Alert: {behindCourses.length} {behindCourses.length === 1 ? 'course' : 'courses'} exceeding initial target deadline
           </div>
           <div className="space-y-2">
@@ -98,12 +98,12 @@ export const DashboardStudyPlannerSummary: React.FC = () => {
               <div
                 key={course.id}
                 onClick={() => openCourse(course.id)}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--surface-mid)] border border-[var(--accent)]/15 hover:border-[var(--accent)]/15 transition cursor-pointer text-xs"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--surface-mid)] border border-amber-500/20 hover:border-amber-400/50 transition cursor-pointer text-xs"
               >
                 <div className="space-y-0.5">
                   <div className="font-semibold text-[var(--ink)] flex items-center gap-2">
                     <span className="truncate max-w-[280px]">{course.title}</span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--accent)]/15 text-[var(--accent)]">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">
                       +{pacing.daysDelta}d delay
                     </span>
                   </div>
@@ -179,7 +179,7 @@ export const DashboardStudyPlannerSummary: React.FC = () => {
                     -{Math.abs(pacing.daysDelta)}d
                   </span>
                 ) : pacing.status === 'behind' ? (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--accent)]/15 text-[var(--accent)] shrink-0 flex items-center gap-0.5">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 shrink-0 flex items-center gap-0.5">
                     <AlertTriangle className="w-2.5 h-2.5" />
                     +{pacing.daysDelta}d
                   </span>

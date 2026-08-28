@@ -160,7 +160,7 @@ export const CourseDetailPage: React.FC = () => {
             {/* Estimated Time Remaining & Progress Breakdown Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
               <div className="bg-[var(--surface-high)] border border-[var(--border)] rounded-xl p-3 space-y-1">
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400">
                   <Clock className="w-3 h-3" />
                   Time Left
                 </div>
@@ -220,7 +220,7 @@ export const CourseDetailPage: React.FC = () => {
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-xs text-[var(--ink-dim)]">
                 <span className="flex items-center gap-1.5 text-[11px]">
-                  <Clock className="w-3 h-3 text-[var(--accent)]" />
+                  <Clock className="w-3 h-3 text-amber-400" />
                   <span>{remainingStats.formattedRemainingVerbose}</span>
                 </span>
                 <span className="font-semibold text-[var(--ink)] text-[11px]">
@@ -406,7 +406,7 @@ export const CourseDetailPage: React.FC = () => {
                               {formatSeconds(progress.watchedSeconds)} watched ({progress.percentage}%)
                             </span>
                             <span>•</span>
-                            <span className="text-[var(--accent)] font-medium flex items-center gap-1">
+                            <span className="text-amber-400 font-medium flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               {formatSeconds(Math.max(0, (vid.durationSeconds || 0) - progress.watchedSeconds))} left
                             </span>

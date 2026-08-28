@@ -118,7 +118,7 @@ export const YouTubeTestPage: React.FC = () => {
           <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2 ${
             hasPlayedOverZero && hasValidDuration && !liveState.errorCode
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              : 'bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/15'
+              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
           }`}>
             {hasPlayedOverZero && hasValidDuration && !liveState.errorCode ? (
               <>
@@ -127,7 +127,7 @@ export const YouTubeTestPage: React.FC = () => {
               </>
             ) : (
               <>
-                <AlertTriangle className="w-3.5 h-3.5 text-[var(--accent)]" />
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
                 Awaiting Playback Verification
               </>
             )}
@@ -231,7 +231,7 @@ export const YouTubeTestPage: React.FC = () => {
                   liveState.status === 'PLAYING'
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : liveState.status === 'PAUSED'
-                    ? 'bg-[var(--accent)]/15 text-[var(--accent)]'
+                    ? 'bg-amber-500/20 text-amber-400'
                     : liveState.status === 'ERROR'
                     ? 'bg-red-500/20 text-red-400'
                     : 'text-[var(--ink-faint)]'

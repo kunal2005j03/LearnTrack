@@ -303,7 +303,7 @@ export const CourseTrendChart: React.FC<CourseTrendChartProps> = ({
                   <defs>
                     <linearGradient id="progressBarGradient" x1="0" y1="0" x2="1" y2="0">
                       <stop offset="0%" stopColor="var(--accent)" />
-                      <stop offset="100%" stopColor="var(--accent-gradient-end)" />
+                      <stop offset="100%" stopColor="#818CF8" />
                     </linearGradient>
                   </defs>
                 </BarChart>

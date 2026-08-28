@@ -2,46 +2,18 @@
 
 @layer base {
   :root {
-    --bg: #08090C;
-    --surface-low: #111215;
-    --surface-mid: #16181D;
-    --surface-high: #1F2229;
+    --bg: #050505;
+    --surface-low: #0B0B0D;
+    --surface-mid: #111113;
+    --surface-high: #1A1A1D;
     --ink: #FFFFFF;
-    --ink-dim: #9CA3AF;
-    --ink-faint: #525866;
-    --accent: #E5A93C;
-    --accent-hover: #F0B74E;
-    --accent-gradient-end: #D97706;
-    --accent-shadow: rgba(245, 158, 11, 0.2);
-    --accent-glow: rgba(229, 169, 60, 0.15);
-    --accent-subtle: rgba(229, 169, 60, 0.12);
+    --ink-dim: #A1A1AA;
+    --ink-faint: #636366;
+    --accent: #A78BFA;
+    --accent-glow: rgba(167, 139, 250, 0.15);
     --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.15);
     --glass: rgba(255, 255, 255, 0.03);
     --sidebar-w: 240px;
-    --ai-purple: #A78BFA;
-    --ai-purple-subtle: rgba(167, 139, 250, 0.12);
-  }
-
-  .dark, html.dark {
-    --bg: #08090C;
-    --surface-low: #111215;
-    --surface-mid: #16181D;
-    --surface-high: #1F2229;
-    --ink: #FFFFFF;
-    --ink-dim: #9CA3AF;
-    --ink-faint: #525866;
-    --accent: #E5A93C;
-    --accent-hover: #F0B74E;
-    --accent-gradient-end: #D97706;
-    --accent-shadow: rgba(245, 158, 11, 0.2);
-    --accent-glow: rgba(229, 169, 60, 0.15);
-    --accent-subtle: rgba(229, 169, 60, 0.12);
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.15);
-    --glass: rgba(255, 255, 255, 0.03);
-    --ai-purple: #A78BFA;
-    --ai-purple-subtle: rgba(167, 139, 250, 0.12);
   }
 
   .light, .light-theme, html.light {
@@ -53,16 +25,9 @@
     --ink-dim: #48484A;
     --ink-faint: #8E8E93;
     --accent: #8B5CF6;
-    --accent-hover: #7C3AED;
-    --accent-gradient-end: #6366F1;
-    --accent-shadow: rgba(168, 85, 247, 0.2);
     --accent-glow: rgba(139, 92, 246, 0.1);
-    --accent-subtle: rgba(139, 92, 246, 0.1);
     --border: rgba(0, 0, 0, 0.08);
-    --border-strong: rgba(0, 0, 0, 0.15);
     --glass: rgba(0, 0, 0, 0.02);
-    --ai-purple: #8B5CF6;
-    --ai-purple-subtle: rgba(139, 92, 246, 0.1);
   }
 
   body {
