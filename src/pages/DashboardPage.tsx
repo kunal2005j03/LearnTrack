@@ -217,8 +217,8 @@ export const DashboardPage: React.FC = () => {
                       Continue Learning
                     </span>
                     {continueCourseRemaining && !continueCourseRemaining.isCompleted && (
-                      <span className="px-2 py-0.5 rounded-full bg-[var(--surface-high)] border border-[var(--border)] text-[10px] text-amber-300 font-medium flex items-center gap-1">
-                        <Clock className="w-2.5 h-2.5 text-amber-400" />
+                      <span className="px-2 py-0.5 rounded-full bg-[var(--surface-high)] border border-[var(--border)] text-[10px] text-[var(--accent)] font-medium flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 text-[var(--accent)]" />
                         {continueCourseRemaining.formattedRemaining} left in course
                       </span>
                     )}
@@ -437,7 +437,7 @@ export const DashboardPage: React.FC = () => {
             {courses.length > 0 && (
               <div className="mt-4 bg-[var(--surface-low)] border border-[var(--border)] p-4 rounded-[20px] flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)] flex items-center gap-1.5">
                     <Clock className="w-3 h-3" />
                     <span>Est. Time Remaining</span>
                   </div>

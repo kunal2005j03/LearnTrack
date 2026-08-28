@@ -229,14 +229,14 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
       id="in-this-video-panel"
       className={`shrink-0 flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${
         isFloatingOverlay
-          ? 'w-[calc(100vw-2rem)] sm:w-96 max-w-[420px] bg-[#18181b]/95 text-white backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl z-50 h-[min(680px,calc(100vh-5rem))]'
-          : 'w-full lg:w-96 bg-[var(--surface-low)] dark:bg-[#18181b] border border-[var(--border)] rounded-2xl shadow-xl h-[620px] max-h-[85vh]'
+          ? 'w-[calc(100vw-2rem)] sm:w-96 max-w-[420px] bg-[var(--surface-low)] text-[var(--ink)] backdrop-blur-2xl border border-[var(--border)] rounded-2xl shadow-2xl z-50 h-[min(680px,calc(100vh-5rem))]'
+          : 'w-full lg:w-96 bg-[var(--surface-low)] border border-[var(--border)] rounded-2xl shadow-xl h-[620px] max-h-[85vh]'
       } ${className}`}
       aria-label="In this video chapters and transcript"
     >
       {/* 1. Header with Close Button (Hidden if parent provides header) */}
       {!hideHeader && (
-        <div className="p-4 pb-3 border-b border-[var(--border)]/70 dark:border-white/10 flex items-center justify-between bg-[var(--surface-high)]/40 dark:bg-black/30 backdrop-blur-sm">
+        <div className="p-4 pb-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-high)]/40 backdrop-blur-sm">
           <h2 className="text-base font-bold text-[var(--ink)] tracking-tight flex items-center gap-2">
             <span>In this video</span>
           </h2>
@@ -244,7 +244,7 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
             id="close-in-this-video-btn"
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] dark:hover:bg-white/15 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] transition-colors cursor-pointer"
             title="Close panel"
             aria-label="Close panel"
           >
@@ -254,7 +254,7 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
       )}
 
       {/* 2. Segmented Pill Tabs */}
-      <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-[var(--border)]/40 dark:border-white/10">
+      <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
           <button
             id="tab-chapters-btn"
@@ -283,15 +283,15 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
         </div>
       </div>
 
-      {/* 3. Subtitle / Disclaimer Bar with 3-Dots Menu matching YouTube screenshot */}
+      {/* 3. Subtitle / Disclaimer Bar with 3-Dots Menu matching screenshot */}
       {activeTab === 'chapters' && (
-        <div className="px-4 py-2 bg-[var(--surface-high)]/30 dark:bg-black/20 flex items-center justify-between text-[11px] text-[var(--ink-dim)] dark:text-zinc-400 border-b border-[var(--border)]/40 dark:border-white/10">
+        <div className="px-4 py-2 bg-[var(--surface-high)]/30 flex items-center justify-between text-[11px] text-[var(--ink-dim)] border-b border-[var(--border)]">
           <div className="flex items-center gap-1.5 font-medium">
             {isAuto ? (
               <span>These chapters are auto-generated</span>
             ) : chapterSource === 'ai_generated' ? (
-              <span className="flex items-center gap-1 text-purple-400">
-                <Sparkles className="w-3 h-3 text-purple-400 shrink-0" />
+              <span className="flex items-center gap-1 text-[var(--accent)]">
+                <Sparkles className="w-3 h-3 text-[var(--accent)] shrink-0" />
                 AI Curriculum Checkpoints
               </span>
             ) : (
@@ -308,7 +308,7 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
               id="chapter-menu-btn"
               type="button"
               onClick={() => setShowMenu((prev) => !prev)}
-              className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1 rounded-full text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] transition-colors cursor-pointer"
               title="Options"
               aria-label="Chapter options"
             >
@@ -316,11 +316,11 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 mt-1 w-52 bg-[#202024] border border-white/15 rounded-xl shadow-2xl py-1.5 z-50 text-xs text-zinc-200">
+              <div className="absolute right-0 mt-1 w-52 bg-[var(--surface-mid)] border border-[var(--border)] rounded-xl shadow-2xl py-1.5 z-50 text-xs text-[var(--ink)]">
                 <button
                   type="button"
                   onClick={handleCopyTimestamps}
-                  className="w-full text-left px-3.5 py-2 hover:bg-white/10 flex items-center gap-2 text-zinc-200 cursor-pointer"
+                  className="w-full text-left px-3.5 py-2 hover:bg-[var(--surface-high)] flex items-center gap-2 text-[var(--ink)] cursor-pointer"
                 >
                   {copied ? (
                     <>
@@ -329,14 +329,14 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                      <Copy className="w-3.5 h-3.5 text-[var(--ink-dim)]" />
                       <span>Copy all timestamps</span>
                     </>
                   )}
                 </button>
-                <div className="border-t border-white/10 my-1" />
-                <div className="px-3.5 py-1.5 text-[11px] text-zinc-400 space-y-1">
-                  <p className="font-semibold text-white">Source details:</p>
+                <div className="border-t border-[var(--border)] my-1" />
+                <div className="px-3.5 py-1.5 text-[11px] text-[var(--ink-dim)] space-y-1">
+                  <p className="font-semibold text-[var(--ink)]">Source details:</p>
                   <p>
                     {isAuto
                       ? 'Generated by YouTube speech recognition & visual section parsing.'
@@ -400,8 +400,8 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
                     onClick={() => onSeekTo(ch.startSeconds)}
                     className={`w-full text-left p-2.5 rounded-xl flex items-center gap-3 transition-all group relative border cursor-pointer shrink-0 ${
                       isCurrent
-                        ? 'bg-cyan-500/15 border-cyan-500/40 shadow-sm'
-                        : 'hover:bg-white/10 border-transparent'
+                        ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40 shadow-sm'
+                        : 'hover:bg-[var(--surface-high)] border-transparent'
                     }`}
                     aria-current={isCurrent ? 'true' : undefined}
                   >
@@ -424,10 +424,10 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
                         }`}
                       >
                         {isCurrent ? (
-                          <div className="flex items-center gap-0.5 text-cyan-400">
-                            <span className="w-1 h-3 bg-cyan-400 animate-pulse rounded-full" />
-                            <span className="w-1 h-4 bg-cyan-400 animate-pulse delay-75 rounded-full" />
-                            <span className="w-1 h-2.5 bg-cyan-400 animate-pulse delay-150 rounded-full" />
+                          <div className="flex items-center gap-0.5 text-[var(--accent)]">
+                            <span className="w-1 h-3 bg-[var(--accent)] animate-pulse rounded-full" />
+                            <span className="w-1 h-4 bg-[var(--accent)] animate-pulse delay-75 rounded-full" />
+                            <span className="w-1 h-2.5 bg-[var(--accent)] animate-pulse delay-150 rounded-full" />
                           </div>
                         ) : (
                           <Play className="w-5 h-5 text-white fill-white/80 drop-shadow-md" />
@@ -440,30 +440,30 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
                       </div>
                     </div>
 
-                    {/* Right: Chapter Title & Cyan Timestamp Badge */}
+                    {/* Right: Chapter Title & Gold Timestamp Badge */}
                     <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5 space-y-1">
                       <p
                         className={`text-xs sm:text-[13px] font-bold leading-snug line-clamp-2 transition-colors ${
-                          isCurrent ? 'text-cyan-300' : 'text-white/95 group-hover:text-white'
+                          isCurrent ? 'text-[var(--accent)]' : 'text-[var(--ink)]/95 group-hover:text-[var(--ink)]'
                         }`}
                       >
                         {ch.title}
                       </p>
 
-                      {/* Cyan Timestamp Pill Matching Screenshot */}
+                      {/* Gold Timestamp Pill Matching Screenshot */}
                       <div className="flex items-center gap-1.5 pt-0.5">
                         <span
                           className={`inline-flex items-center text-[11px] font-mono font-bold px-2 py-0.5 rounded-md transition-colors ${
                             isCurrent
-                              ? 'bg-cyan-500 text-zinc-950 font-extrabold shadow-xs'
-                              : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 group-hover:bg-cyan-500/25'
+                              ? 'bg-[var(--accent)] text-zinc-950 font-extrabold shadow-xs'
+                              : 'bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30 group-hover:bg-[var(--accent)]/25'
                           }`}
                         >
                           {ch.formattedStart}
                         </span>
 
                         {isCurrent && (
-                          <span className="text-[10px] font-semibold text-cyan-400 flex items-center gap-1">
+                          <span className="text-[10px] font-semibold text-[var(--accent)] flex items-center gap-1">
                             <Volume2 className="w-3 h-3 animate-pulse" />
                             Playing
                           </span>
@@ -486,15 +486,15 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
       {activeTab === 'transcript' && (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Transcript Search Bar */}
-          <div className="p-3 border-b border-white/10 bg-black/20 shrink-0">
+          <div className="p-3 border-b border-[var(--border)] bg-[var(--surface-high)]/30 shrink-0">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-dim)]" />
               <input
                 type="text"
                 value={transcriptSearch}
                 onChange={(e) => setTranscriptSearch(e.target.value)}
                 placeholder="Search transcript..."
-                className="w-full bg-black/40 border border-white/15 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-cyan-500"
+                className="w-full bg-[var(--surface-mid)] border border-[var(--border)] rounded-lg pl-8 pr-3 py-1.5 text-xs text-[var(--ink)] placeholder-[var(--ink-dim)] focus:outline-none focus:border-[var(--accent)]"
               />
             </div>
           </div>
@@ -502,12 +502,12 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
           {/* Transcript Lines List */}
           <div ref={transcriptScrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 touch-pan-y pb-16">
             {loadingTranscript ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-400 space-y-2">
-                <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+              <div className="flex flex-col items-center justify-center py-12 text-center text-[var(--ink-dim)] space-y-2">
+                <div className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
                 <p className="text-xs">Loading transcript checkpoints...</p>
               </div>
             ) : filteredTranscript.length === 0 ? (
-              <div className="py-12 text-center text-xs text-zinc-400">
+              <div className="py-12 text-center text-xs text-[var(--ink-dim)]">
                 {transcriptSearch ? 'No matching transcript lines found.' : 'No transcript available.'}
               </div>
             ) : (
@@ -535,14 +535,14 @@ export const InThisVideoPanel: React.FC<InThisVideoPanelProps> = React.memo(({
                     onClick={() => onSeekTo(t.startSeconds)}
                     className={`w-full text-left p-2.5 rounded-xl transition-all flex items-start gap-3 group border cursor-pointer ${
                       isActive
-                        ? 'bg-cyan-500/15 border-cyan-500/40'
-                        : 'hover:bg-white/10 border-transparent'
+                        ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40'
+                        : 'hover:bg-[var(--surface-high)] border-transparent'
                     }`}
                   >
-                    <span className="inline-flex items-center text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 group-hover:bg-cyan-500/25 shrink-0 mt-0.5">
+                    <span className="inline-flex items-center text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30 group-hover:bg-[var(--accent)]/25 shrink-0 mt-0.5">
                       {t.formattedStart}
                     </span>
-                    <p className={`text-xs leading-relaxed ${isActive ? 'text-white font-semibold' : 'text-zinc-400 group-hover:text-zinc-200'}`}>
+                    <p className={`text-xs leading-relaxed ${isActive ? 'text-[var(--ink)] font-semibold' : 'text-[var(--ink-dim)] group-hover:text-[var(--ink)]'}`}>
                       {t.text}
                     </p>
                   </button>

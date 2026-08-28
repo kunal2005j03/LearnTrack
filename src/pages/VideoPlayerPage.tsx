@@ -809,11 +809,11 @@ export const VideoPlayerPage: React.FC = () => {
               }}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${
                 sidebarTab === 'in_this_video' && showPlaylistSidebar
-                  ? 'bg-cyan-500/15 text-cyan-500 dark:text-cyan-400 border-cyan-500/30'
+                  ? 'bg-[var(--accent)]/15 text-[var(--accent)] dark:text-[var(--accent)] border-[var(--accent)]/30'
                   : 'bg-[var(--surface-low)] hover:bg-[var(--surface-high)] text-[var(--ink-dim)] border-[var(--border)]'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <Sparkles className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
               <span>In this video ({chapters.length})</span>
             </button>
           )}
@@ -1023,7 +1023,7 @@ export const VideoPlayerPage: React.FC = () => {
                               }}
                               className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
                                 fullscreenOverlayTab === 'in_this_video'
-                                  ? 'bg-cyan-500 text-zinc-950 font-bold shadow-xs'
+                                  ? 'bg-[var(--accent)] text-zinc-950 font-bold shadow-xs'
                                   : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
                               }`}
                             >
@@ -1246,12 +1246,12 @@ export const VideoPlayerPage: React.FC = () => {
                             }}
                             className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer backdrop-blur-md border shadow-lg truncate ${
                               isFullscreenOverlayOpen && fullscreenOverlayTab === 'in_this_video'
-                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/80 shadow-cyan-500/10'
+                                ? 'bg-[var(--accent)]/15 text-[var(--accent)] border-[var(--accent)]/30 shadow-[var(--accent)]/20'
                                 : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 border-white/10 hover:border-white/25'
                             }`}
                             title="Toggle Chapters"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <Sparkles className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
                             <span className="truncate">Chapters</span>
                             <span className="text-[10px] opacity-75 font-mono">({chapters.length})</span>
                           </button>
@@ -1401,12 +1401,12 @@ export const VideoPlayerPage: React.FC = () => {
                             }}
                             className={`px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition cursor-pointer backdrop-blur-md border shadow-lg ${
                               isFullscreenOverlayOpen && fullscreenOverlayTab === 'in_this_video'
-                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/80 font-semibold shadow-cyan-500/10'
+                                ? 'bg-[var(--accent)]/20 text-[var(--accent)] border-[var(--accent)]/80 font-semibold shadow-[var(--accent)]/10'
                                 : 'bg-black/60 hover:bg-zinc-900/80 text-zinc-100 hover:text-white border-white/10 hover:border-white/25'
                             }`}
                             title="Toggle Chapters"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                            <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
                             <span>Chapters ({chapters.length})</span>
                           </button>
                         )}
@@ -1554,7 +1554,7 @@ export const VideoPlayerPage: React.FC = () => {
                     Lesson {(currentIndex + 1).toString().padStart(2, '0')} of {videos.length}
                   </span>
                   {currentChapter && (
-                    <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-cyan-500 dark:text-cyan-400 font-medium truncate">
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-[var(--accent)] dark:text-[var(--accent)] font-medium truncate">
                       • {currentChapter.title} ({currentChapter.formattedStart})
                     </span>
                   )}
@@ -1608,7 +1608,7 @@ export const VideoPlayerPage: React.FC = () => {
                         setShowMobileDrawer(true);
                       }
                     }}
-                    className="sm:hidden inline-flex items-center gap-1.5 text-xs text-[var(--accent)] hover:text-cyan-400 font-medium pt-0.5 cursor-pointer text-left transition-colors group"
+                    className="sm:hidden inline-flex items-center gap-1.5 text-xs text-[var(--accent)] hover:text-[var(--accent)] font-medium pt-0.5 cursor-pointer text-left transition-colors group"
                     title="Click to view all chapters"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
@@ -1648,10 +1648,10 @@ export const VideoPlayerPage: React.FC = () => {
                         setShowMobileDrawer(true);
                       }
                     }}
-                    className="lg:hidden px-3 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                    className="lg:hidden px-3 py-1.5 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                     title="Open Chapters"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
+                    <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
                     <span>Chapters ({chapters.length})</span>
                   </button>
                 )}
@@ -1770,7 +1770,7 @@ export const VideoPlayerPage: React.FC = () => {
                 onClick={() => setSidebarTab('in_this_video')}
                 className={`min-w-0 py-2 px-1 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
                   sidebarTab === 'in_this_video'
-                    ? 'bg-cyan-500 text-zinc-950 shadow-xs'
+                    ? 'bg-[var(--accent)] text-zinc-950 shadow-xs'
                     : 'text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)]'
                 }`}
                 title={`Chapters (${chapters.length})`}
@@ -1840,7 +1840,7 @@ export const VideoPlayerPage: React.FC = () => {
                   <div className="flex items-center gap-2 text-xs text-[var(--ink-faint)] mt-0.5">
                     <span>{course.completedVideos} of {videos.length} completed</span>
                     <span>•</span>
-                    <span className="text-amber-400 font-medium flex items-center gap-1">
+                    <span className="text-[var(--accent)] font-medium flex items-center gap-1">
                       <Clock className="w-2.5 h-2.5" />
                       {playlistRemainingStats.formattedRemaining} left
                     </span>
@@ -2029,7 +2029,7 @@ export const VideoPlayerPage: React.FC = () => {
                     }}
                     className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                       sidebarTab === 'in_this_video'
-                        ? 'bg-cyan-500 text-zinc-950 font-black shadow-xs'
+                        ? 'bg-[var(--accent)] text-zinc-950 font-black shadow-xs'
                         : 'bg-[var(--surface-high)] text-[var(--ink-dim)] hover:text-[var(--ink)]'
                     }`}
                   >

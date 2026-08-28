@@ -152,7 +152,7 @@ export const SettingsPage: React.FC = () => {
               className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${
                 youtubeStatus.configured
                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  : 'bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/15'
               }`}
             >
               {youtubeStatus.configured ? (
@@ -162,7 +162,7 @@ export const SettingsPage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <AlertCircle className="w-3 h-3 text-amber-400" />
+                  <AlertCircle className="w-3 h-3 text-[var(--accent)]" />
                   Key Unset (Demo Fallback Active)
                 </>
               )}

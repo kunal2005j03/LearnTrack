@@ -110,8 +110,8 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
                   <CheckCircle2 className="w-3 h-3" /> Done
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-medium text-amber-300 shadow-sm flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-amber-400" />
+                <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-medium text-[var(--accent)] shadow-sm flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-[var(--accent)]" />
                   {remainingStats.formattedRemaining}
                 </span>
               )}
@@ -212,7 +212,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
             {/* Time Left Row */}
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-[var(--ink-dim)] flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <Clock className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
                 <span className="font-medium">Time Left:</span>
               </span>
               <span className="text-[11px] font-semibold text-[var(--ink)]">
@@ -250,7 +250,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
                     -{Math.abs(pacing.daysDelta)}d
                   </span>
                 ) : pacing.status === 'behind' && (!hasSchedule || pacing.isScheduledToday) ? (
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 flex items-center gap-0.5">
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[var(--accent)]/15 text-[var(--accent)] flex items-center gap-0.5">
                     <AlertTriangle className="w-2.5 h-2.5" />
                     +{pacing.daysDelta}d
                   </span>

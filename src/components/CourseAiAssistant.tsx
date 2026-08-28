@@ -828,23 +828,23 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#18181b] text-zinc-100 select-text overflow-hidden relative font-sans">
+    <div className="flex flex-col h-full bg-[var(--surface-low)] text-[var(--ink)] select-text overflow-hidden relative font-sans">
           {/* Top Header: ChatGPT-Style Header with Course Badge & Terminal */}
-          <div className="p-3 bg-[#18181b] border-b border-white/10 shrink-0 space-y-2.5 shadow-sm">
+          <div className="p-3 bg-[var(--surface-low)] border-b border-[var(--border)] shrink-0 space-y-2.5 shadow-sm">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white shadow-md shrink-0">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-[var(--ink)] shadow-md shrink-0">
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-white truncate">{course.title}</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-zinc-300 font-medium">
+                <span className="text-xs font-bold text-[var(--ink)] truncate">{course.title}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-[var(--ink)] font-medium">
                   AI Mentor
                 </span>
               </div>
-              <div className="text-[11px] text-zinc-400 flex items-center gap-2 truncate">
-                <span className="text-cyan-400 font-mono flex items-center gap-1 truncate">
+              <div className="text-[11px] text-[var(--ink-dim)] flex items-center gap-2 truncate">
+                <span className="text-[var(--ai-purple)] font-mono flex items-center gap-1 truncate">
                   <Clock className="w-3 h-3 shrink-0" />
                   @{formattedCurrentTime} {activeChapter ? `• ${activeChapter.title}` : ''}
                 </span>
@@ -854,14 +854,14 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
 
           <div className="flex items-center gap-1.5 shrink-0">
             {/* Top View Mode Switcher: Chat vs Sandbox Terminal */}
-            <div className="flex items-center bg-[#27272a] p-0.5 rounded-xl border border-white/10 text-xs">
+            <div className="flex items-center bg-[#27272a] p-0.5 rounded-xl border border-[var(--border)] text-xs">
               <button
                 type="button"
                 onClick={() => setShowTerminal(false)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                   !showTerminal
                     ? 'bg-zinc-100 text-zinc-900 shadow-sm'
-                    : 'text-zinc-400 hover:text-white'
+                    : 'text-[var(--ink-dim)] hover:text-[var(--ink)]'
                 }`}
                 title="AI Chat & Study Notes"
               >
@@ -874,7 +874,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                   showTerminal
                     ? 'bg-emerald-500 text-zinc-950 font-bold shadow-sm'
-                    : 'text-zinc-400 hover:text-white'
+                    : 'text-[var(--ink-dim)] hover:text-[var(--ink)]'
                 }`}
                 title="Interactive Python/JS Code Terminal"
               >
@@ -889,7 +889,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                   if (onClearDoubtContext) onClearDoubtContext();
                   onClose();
                 }}
-                className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                className="p-1.5 rounded-full hover:bg-white/10 text-[var(--ink-dim)] hover:text-[var(--ink)] transition-colors cursor-pointer"
                 title="Close AI Assistant"
                 aria-label="Close AI Assistant"
               >
@@ -903,7 +903,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
               <button
                 type="button"
                 onClick={() => setShowClearConfirm(!showClearConfirm)}
-                className="p-2 rounded-xl bg-[#27272a] hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/10 hover:border-rose-500/30 transition cursor-pointer"
+                className="p-2 rounded-xl bg-[#27272a] hover:bg-rose-500/20 text-[var(--ink-dim)] hover:text-rose-300 border border-[var(--border)] hover:border-rose-500/30 transition cursor-pointer"
                 title={showTerminal ? 'Clear Terminal Code' : 'Clear Chat Window'}
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -911,11 +911,11 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
 
               {/* In-UI Clear Confirmation Dropdown */}
               {showClearConfirm && (
-                <div className="absolute right-0 top-full mt-2 w-56 p-3 bg-[#18181b] border border-white/15 rounded-2xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <p className="text-xs font-semibold text-white">
+                <div className="absolute right-0 top-full mt-2 w-56 p-3 bg-[var(--surface-low)] border border-[var(--border)] rounded-2xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <p className="text-xs font-semibold text-[var(--ink)]">
                     {showTerminal ? 'Clear terminal code?' : 'Clear entire chat history?'}
                   </p>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <p className="text-[11px] text-[var(--ink-dim)] mt-0.5">
                     {showTerminal
                       ? 'This resets the code editor and terminal output.'
                       : 'This resets the conversation for a clean window.'}
@@ -924,14 +924,14 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                     <button
                       type="button"
                       onClick={showTerminal ? handleClearTerminal : handleClearChat}
-                      className="flex-1 py-1 px-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+                      className="flex-1 py-1 px-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-[var(--ink)] text-xs font-bold transition cursor-pointer shadow-xs"
                     >
                       Clear
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowClearConfirm(false)}
-                      className="py-1 px-2.5 rounded-lg bg-white/10 hover:bg-white/15 text-zinc-300 text-xs font-medium transition cursor-pointer"
+                      className="py-1 px-2.5 rounded-lg bg-white/10 hover:bg-white/15 text-[var(--ink)] text-xs font-medium transition cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -947,10 +947,10 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
             type="button"
             onClick={triggerSummarize}
             disabled={isLoading}
-            className="px-3.5 py-2 rounded-2xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/35 font-bold text-xs whitespace-nowrap flex items-center gap-2 shrink-0 transition cursor-pointer active:scale-95 shadow-sm"
+            className="px-3.5 py-2 rounded-2xl bg-[var(--ai-purple-subtle)] hover:bg-[var(--ai-purple-subtle)] text-[var(--ai-purple)] border border-[var(--ai-purple-subtle)] font-bold text-xs whitespace-nowrap flex items-center gap-2 shrink-0 transition cursor-pointer active:scale-95 shadow-sm"
             title="Generate structured study notes and key takeaways"
           >
-            <FileText className="w-4 h-4 text-cyan-400" />
+            <FileText className="w-4 h-4 text-[var(--ai-purple)]" />
             <span>Notes / Summary</span>
           </button>
         </div>
@@ -963,18 +963,18 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
           onClick={() => setShowTimelapsePicker(false)}
         >
           <div 
-            className="w-full max-w-lg bg-[#18181b] rounded-2xl border border-cyan-500/40 p-3.5 sm:p-4 space-y-3.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-xs max-h-[92%] flex flex-col overflow-hidden"
+            className="w-full max-w-lg bg-[var(--surface-low)] rounded-2xl border border-[var(--ai-purple-subtle)] p-3.5 sm:p-4 space-y-3.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-xs max-h-[92%] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between text-xs text-zinc-200 font-semibold border-b border-white/10 pb-2.5 shrink-0">
+            <div className="flex items-center justify-between text-xs text-[var(--ink)] font-semibold border-b border-[var(--border)] pb-2.5 shrink-0">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-cyan-400" />
+                <Clock className="w-4 h-4 text-[var(--ai-purple)]" />
                 <span>Select Chapter Timeline or Enter Custom Interval</span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowTimelapsePicker(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                className="p-1 rounded-lg text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-white/10 transition cursor-pointer"
                 title="Close selector"
               >
                 <X className="w-4 h-4" />
@@ -1005,12 +1005,12 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                         }}
                         className={`text-left p-2.5 rounded-xl border text-xs transition flex items-center justify-between gap-2 cursor-pointer ${
                           isSelected
-                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 font-semibold shadow-xs'
-                            : 'bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10 hover:border-white/20'
+                            ? 'bg-[var(--ai-purple-subtle)] border-[var(--ai-purple)] text-[var(--ai-purple)] font-semibold shadow-xs'
+                            : 'bg-white/5 border-[var(--border)] text-[var(--ink)] hover:bg-white/10 hover:border-[var(--border)]'
                         }`}
                       >
                         <span className="truncate font-medium">{ch.title}</span>
-                        <span className="font-mono text-[11px] text-cyan-400 shrink-0 font-bold">
+                        <span className="font-mono text-[11px] text-[var(--ai-purple)] shrink-0 font-bold">
                           {ch.formattedStart} - {ch.formattedEnd || ''}
                         </span>
                       </button>
@@ -1018,14 +1018,14 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                   })}
                 </div>
               ) : (
-                <div className="text-xs text-zinc-400 py-3 text-center">No automatic chapters detected for this lesson.</div>
+                <div className="text-xs text-[var(--ink-dim)] py-3 text-center">No automatic chapters detected for this lesson.</div>
               )}
             </div>
 
             {/* Custom Timelapse Input Form with Direct "From" & "To" Timestamp Selection */}
-            <form onSubmit={handleApplyCustomTimelapse} className="pt-3 border-t border-white/10 space-y-2.5 shrink-0 bg-[#18181b]">
+            <form onSubmit={handleApplyCustomTimelapse} className="pt-3 border-t border-[var(--border)] space-y-2.5 shrink-0 bg-[var(--surface-low)]">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs text-zinc-300 font-semibold flex items-center gap-1.5">
+                <span className="text-xs text-[var(--ink)] font-semibold flex items-center gap-1.5">
                   <span>Custom Interval:</span>
                 </span>
                 
@@ -1034,10 +1034,10 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                   <button
                     type="button"
                     onClick={() => setCustomStart(formattedCurrentTime)}
-                    className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/35 text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-2xs"
+                    className="px-2.5 py-1 rounded-xl bg-[var(--ai-purple-subtle)] hover:bg-[var(--ai-purple-subtle)] text-[var(--ai-purple)] border border-[var(--ai-purple-subtle)] text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-2xs"
                     title={`Set 'From' start time to current playback timestamp (${formattedCurrentTime})`}
                   >
-                    <Clock className="w-3 h-3 text-cyan-400" />
+                    <Clock className="w-3 h-3 text-[var(--ai-purple)]" />
                     <span>From ({formattedCurrentTime})</span>
                   </button>
                   <button
@@ -1059,13 +1059,13 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                     placeholder="From (e.g. 2:35)"
                     value={customStart}
                     onChange={(e) => setCustomStart(e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-white/20 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-cyan-400 font-mono text-center transition"
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-[var(--surface-mid)] border border-[var(--border)] text-xs text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:outline-none focus:border-[var(--ai-purple)] font-mono text-center transition"
                   />
                   {customStart && (
                     <button
                       type="button"
                       onClick={() => setCustomStart('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-xs cursor-pointer"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] hover:text-[var(--ink)] text-xs cursor-pointer"
                       title="Clear start time"
                     >
                       ×
@@ -1073,7 +1073,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                   )}
                 </div>
 
-                <span className="text-zinc-500 text-xs font-bold shrink-0">-</span>
+                <span className="text-[var(--ink-faint)] text-xs font-bold shrink-0">-</span>
 
                 <div className="relative flex-1">
                   <input
@@ -1081,13 +1081,13 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                     placeholder="To (e.g. 5:45)"
                     value={customEnd}
                     onChange={(e) => setCustomEnd(e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-white/20 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-cyan-400 font-mono text-center transition"
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-[var(--surface-mid)] border border-[var(--border)] text-xs text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:outline-none focus:border-[var(--ai-purple)] font-mono text-center transition"
                   />
                   {customEnd && (
                     <button
                       type="button"
                       onClick={() => setCustomEnd('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-xs cursor-pointer"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] hover:text-[var(--ink)] text-xs cursor-pointer"
                       title="Clear end time"
                     >
                       ×
@@ -1098,7 +1098,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                 <button
                   type="submit"
                   disabled={!customStart.trim() || !customEnd.trim()}
-                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-black text-xs font-bold hover:from-cyan-400 hover:to-teal-300 disabled:opacity-40 transition cursor-pointer shadow-sm shrink-0 active:scale-95"
+                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 text-black text-xs font-bold hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 transition cursor-pointer shadow-sm shrink-0 active:scale-95"
                 >
                   Apply
                 </button>
@@ -1110,7 +1110,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
 
       {/* Main Body: Interactive Code Sandbox Terminal vs ChatGPT-Style Conversation */}
       {showTerminal ? (
-        <div className="flex-1 min-h-0 p-3 bg-zinc-950 flex flex-col overflow-hidden animate-in fade-in-50 duration-150">
+        <div className="flex-1 min-h-0 p-3 bg-[var(--bg)] flex flex-col overflow-hidden animate-in fade-in-50 duration-150">
           <InteractiveCodeTerminal
             initialCode={activeSnippetForTerminal || undefined}
             initialLanguage={activeLanguageForTerminal}
@@ -1138,12 +1138,12 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
         {/* Empty State / Welcome Screen when chat is clean */}
         {messages.length === 0 && !isLoading && (
           <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-4 max-w-lg mx-auto animate-in fade-in-50 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white shadow-xl">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-[var(--ink)] shadow-xl">
               <Sparkles className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-white">How can I assist your study today?</h3>
-              <p className="text-xs text-zinc-400">
+              <h3 className="text-base font-bold text-[var(--ink)]">How can I assist your study today?</h3>
+              <p className="text-xs text-[var(--ink-dim)]">
                 Ask anything about <strong>{course.title}</strong>, or generate structured summary notes.
               </p>
             </div>
@@ -1153,13 +1153,13 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
               <button
                 type="button"
                 onClick={triggerSummarize}
-                className="w-full p-3.5 rounded-2xl bg-[#2f2f2f] hover:bg-[#383838] border border-white/8 text-left transition cursor-pointer hover:border-white/20 group"
+                className="w-full p-3.5 rounded-2xl bg-[var(--surface-high)] hover:bg-[#383838] border border-[var(--border)] text-left transition cursor-pointer hover:border-[var(--border)] group"
               >
-                <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold mb-1">
+                <div className="flex items-center gap-2 text-[var(--ai-purple)] text-xs font-bold mb-1">
                   <FileText className="w-4 h-4" />
                   <span>Notes & Summary</span>
                 </div>
-                <p className="text-[11px] text-zinc-400 group-hover:text-zinc-300">
+                <p className="text-[11px] text-[var(--ink-dim)] group-hover:text-[var(--ink)]">
                   Summarize key principles & Big-O complexity for this lesson.
                 </p>
               </button>
@@ -1176,27 +1176,27 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
               className={`flex flex-col space-y-1.5 ${isUser ? 'items-end' : 'items-start'}`}
             >
               {/* Message Sender Header */}
-              <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 px-1">
+              <div className="flex items-center gap-1.5 text-[11px] text-[var(--ink-dim)] px-1">
                 {isUser ? (
                   <>
                     <span>You</span>
                     {msg.videoTimestampFormatted && (
-                      <span className="px-2 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 font-mono text-[10px]">
+                      <span className="px-2 py-0.5 rounded-full bg-[var(--ai-purple-subtle)] text-[var(--ai-purple)] border border-[var(--ai-purple-subtle)] font-mono text-[10px]">
                         📍 {msg.videoTimestampFormatted}
                       </span>
                     )}
-                    <div className="w-4 h-4 rounded-full bg-zinc-700 flex items-center justify-center text-white">
+                    <div className="w-4 h-4 rounded-full bg-zinc-700 flex items-center justify-center text-[var(--ink)]">
                       <User className="w-2.5 h-2.5" />
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white">
+                    <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-[var(--ink)]">
                       <Sparkles className="w-2.5 h-2.5" />
                     </div>
                     <span className="font-semibold text-purple-300">LearnTrack Mentor</span>
                     {msg.videoTimestampFormatted && (
-                      <span className="text-[11px] text-zinc-500 font-mono">
+                      <span className="text-[11px] text-[var(--ink-faint)] font-mono">
                         [{msg.videoTimestampFormatted}]
                       </span>
                     )}
@@ -1209,8 +1209,8 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
               <div
                 className={`rounded-3xl p-4 sm:p-5 transition-all shadow-md ${
                   isUser
-                    ? 'max-w-[92%] sm:max-w-[85%] bg-[#2f2f2f] text-white rounded-tr-md border border-white/10'
-                    : 'w-full max-w-full bg-[#18181b] border border-white/12 text-zinc-100 rounded-tl-md space-y-3.5'
+                    ? 'max-w-[92%] sm:max-w-[85%] bg-[var(--surface-high)] text-[var(--ink)] rounded-tr-md border border-[var(--border)]'
+                    : 'w-full max-w-full bg-[var(--surface-low)] border border-[var(--border)] text-[var(--ink)] rounded-tl-md space-y-3.5'
                 }`}
               >
                 {/* Quota Exhaustion / Fallback Notice Banner */}
@@ -1256,7 +1256,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                                   msg.timelineConfirmation!.actionType
                                 )
                               }
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-95 text-white font-bold text-xs transition cursor-pointer shadow-md"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-indigo-500 hover:from-emerald-400 hover:to-indigo-500 active:scale-95 text-[var(--ink)] font-bold text-xs transition cursor-pointer shadow-md"
                               title="Use this chat prompt"
                             >
                               <Check className="w-3.5 h-3.5" />
@@ -1265,7 +1265,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                             <button
                               type="button"
                               onClick={() => handleCancelTimelineConfirmation(msg.id)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-rose-500/20 text-zinc-300 hover:text-rose-300 border border-white/10 hover:border-rose-500/30 active:scale-95 font-medium text-xs transition cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-rose-500/20 text-[var(--ink)] hover:text-rose-300 border border-[var(--border)] hover:border-rose-500/30 active:scale-95 font-medium text-xs transition cursor-pointer"
                               title="Cancel and remove prompt"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -1274,7 +1274,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                           </div>
                         )}
                       </div>
-                      <span className="text-[11px] text-zinc-400 font-medium truncate max-w-[200px]">
+                      <span className="text-[11px] text-[var(--ink-dim)] font-medium truncate max-w-[200px]">
                         {msg.timelineConfirmation.timeline.label}
                       </span>
                     </div>
@@ -1283,8 +1283,8 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
 
                 {/* Google Search Grounding Citations */}
                 {msg.citations && msg.citations.length > 0 && (
-                  <div className="pt-2.5 border-t border-white/10 space-y-2">
-                    <div className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1.5">
+                  <div className="pt-2.5 border-t border-[var(--border)] space-y-2">
+                    <div className="text-[11px] font-semibold text-[var(--ink-dim)] flex items-center gap-1.5">
                       <Search className="w-3.5 h-3.5 text-blue-400" />
                       <span>Verified Citations & Documentation:</span>
                     </div>
@@ -1310,11 +1310,11 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
         })}
 
         {isLoading && (
-          <div className="flex items-center gap-3 text-xs text-cyan-300 bg-[#18181b] border border-cyan-500/30 p-4 rounded-3xl max-w-sm shadow-xl">
-            <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
+          <div className="flex items-center gap-3 text-xs text-[var(--ai-purple)] bg-[var(--surface-low)] border border-[var(--ai-purple-subtle)] p-4 rounded-3xl max-w-sm shadow-xl">
+            <Loader2 className="w-5 h-5 animate-spin text-[var(--ai-purple)]" />
             <div className="space-y-0.5">
-              <p className="font-bold text-white">Synthesizing study artifacts...</p>
-              <p className="text-[11px] text-zinc-400">Formatting code with syntax colors and bounds.</p>
+              <p className="font-bold text-[var(--ink)]">Synthesizing study artifacts...</p>
+              <p className="text-[11px] text-[var(--ink-dim)]">Formatting code with syntax colors and bounds.</p>
             </div>
           </div>
         )}
@@ -1324,7 +1324,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
 
       {/* ChatGPT-Style Input Box Footer with Rounded Pill Architecture & Timeline Chip */}
       <div 
-        className="p-3 bg-[#18181b] border-t border-white/10 shrink-0 space-y-2"
+        className="p-3 bg-[var(--surface-low)] border-t border-[var(--border)] shrink-0 space-y-2"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
@@ -1344,21 +1344,21 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                 <Clock className="w-3.5 h-3.5" />
                 {doubtContext.timestampFormatted}
               </button>
-              <div className="text-xs text-zinc-300 truncate">
+              <div className="text-xs text-[var(--ink)] truncate">
                 {doubtContext.chapterTitle && (
                   <>
-                    <span className="font-semibold text-white/80">{doubtContext.chapterTitle}</span>
-                    <span className="text-zinc-500 mx-1.5">•</span>
+                    <span className="font-semibold text-[var(--ink)]/80">{doubtContext.chapterTitle}</span>
+                    <span className="text-[var(--ink-faint)] mx-1.5">•</span>
                   </>
                 )}
-                <span className="text-zinc-400">What are you confused about at {doubtContext.timestampFormatted}?</span>
+                <span className="text-[var(--ink-dim)]">What are you confused about at {doubtContext.timestampFormatted}?</span>
               </div>
             </div>
             {onClearDoubtContext && (
               <button 
                 type="button"
                 onClick={onClearDoubtContext}
-                className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer shrink-0 ml-2"
+                className="p-1 rounded-full text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-white/10 transition cursor-pointer shrink-0 ml-2"
                 title="Clear doubt context"
               >
                 <X className="w-4 h-4" />
@@ -1374,7 +1374,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
               <button
                 type="button"
                 onClick={() => setShowTimelapsePicker(!showTimelapsePicker)}
-                className="flex items-center gap-1.5 hover:text-white transition cursor-pointer font-mono font-semibold"
+                className="flex items-center gap-1.5 hover:text-[var(--ink)] transition cursor-pointer font-mono font-semibold"
                 title="Active Timeline Range (Click to change)"
               >
                 <Clock className="w-3.5 h-3.5 text-purple-400" />
@@ -1383,7 +1383,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
               <button
                 type="button"
                 onClick={() => handleUpdateTimeline(null)}
-                className="hover:text-white ml-1 p-0.5 rounded hover:bg-white/10 text-zinc-400 cursor-pointer"
+                className="hover:text-[var(--ink)] ml-1 p-0.5 rounded hover:bg-white/10 text-[var(--ink-dim)] cursor-pointer"
                 title="Clear timeline"
               >
                 <X className="w-3 h-3" />
@@ -1393,16 +1393,16 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
             <button
               type="button"
               onClick={() => setShowTimelapsePicker(!showTimelapsePicker)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 text-xs font-semibold transition cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-[var(--ai-purple)] hover:text-[var(--ai-purple)] border border-[var(--ai-purple-subtle)] text-xs font-semibold transition cursor-pointer active:scale-95"
               title="Select a specific timeline for code extraction or notes"
             >
-              <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+              <Sliders className="w-3.5 h-3.5 text-[var(--ai-purple)]" />
               <span>[ Select Timeline ]</span>
             </button>
           )}
 
           {selectedTimelapse && (
-            <span className="text-[11px] text-zinc-400 truncate max-w-[200px]">
+            <span className="text-[11px] text-[var(--ink-dim)] truncate max-w-[200px]">
               {selectedTimelapse.label}
             </span>
           )}
@@ -1412,26 +1412,26 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 px-1 mb-2">
             {attachments.map(att => (
-              <div key={att.id} className="relative group rounded-xl overflow-hidden border border-white/20 w-16 h-16 shrink-0 bg-black">
+              <div key={att.id} className="relative group rounded-xl overflow-hidden border border-[var(--border)] w-16 h-16 shrink-0 bg-black">
                 <img src={att.dataUrl} alt="Screenshot" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <button
                     type="button"
                     onClick={() => removeAttachment(att.id)}
-                    className="p-1 bg-rose-500/80 hover:bg-rose-500 text-white rounded-full transition cursor-pointer"
+                    className="p-1 bg-rose-500/80 hover:bg-rose-500 text-[var(--ink)] rounded-full transition cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
                 </div>
                 {att.timestampFormatted && (
-                  <div className="absolute bottom-1 right-1 px-1 rounded bg-black/60 text-[8px] font-mono text-white pointer-events-none">
+                  <div className="absolute bottom-1 right-1 px-1 rounded bg-black/60 text-[8px] font-mono text-[var(--ink)] pointer-events-none">
                     {att.timestampFormatted}
                   </div>
                 )}
                 <button
                   type="button"
                   onClick={() => setImageToCrop(att.dataUrl)}
-                  className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-black/20 text-transparent hover:text-white transition-all cursor-pointer pointer-events-auto"
+                  className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-black/20 text-transparent hover:text-[var(--ink)] transition-all cursor-pointer pointer-events-auto"
                   title="Extract Code"
                 >
                   <Crop className="w-4 h-4 mt-6" />
@@ -1446,7 +1446,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
             e.preventDefault();
             sendMessage();
           }}
-          className="flex items-center gap-2 bg-[#2f2f2f] border border-white/15 focus-within:border-cyan-400 rounded-3xl p-1.5 transition shadow-lg"
+          className="flex items-center gap-2 bg-[var(--surface-high)] border border-[var(--border)] focus-within:border-[var(--ai-purple)] rounded-3xl p-1.5 transition shadow-lg"
         >
           <div className="relative shrink-0 ml-1">
             <input 
@@ -1460,22 +1460,22 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
             <button
               type="button"
               onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-              className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              className="p-2 rounded-full text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-white/10 transition cursor-pointer"
             >
               <Paperclip className="w-5 h-5" />
             </button>
             
             {showAttachmentMenu && (
-              <div className="absolute bottom-full left-0 mb-2 w-48 bg-[#18181b] border border-white/15 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute bottom-full left-0 mb-2 w-48 bg-[var(--surface-low)] border border-[var(--border)] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
                 <button
                   type="button"
                   onClick={() => { fileInputRef.current?.click(); setShowAttachmentMenu(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-zinc-300 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-[var(--ink)] hover:bg-white/10 hover:text-[var(--ink)] transition cursor-pointer"
                 >
                   <Upload className="w-4 h-4" />
                   <span>Upload Screenshot</span>
                 </button>
-                <div className="w-full flex items-center gap-2 px-4 py-3 text-sm text-zinc-500 border-t border-white/10 select-none">
+                <div className="w-full flex items-center gap-2 px-4 py-3 text-sm text-[var(--ink-faint)] border-t border-[var(--border)] select-none">
                   <ClipboardPaste className="w-4 h-4" />
                   <span>Paste (Ctrl+V)</span>
                 </div>
@@ -1496,7 +1496,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
                   : `Ask anything about this video (e.g. "between 2:35 - 5:45")...`
             }
             disabled={isLoading}
-            className="flex-1 bg-transparent px-4 py-2 text-sm text-white placeholder-zinc-400 focus:outline-none"
+            className="flex-1 bg-transparent px-4 py-2 text-sm text-[var(--ink)] placeholder-[var(--ink-dim)] focus:outline-none"
           />
 
           <button
@@ -1508,7 +1508,7 @@ export const CourseAiAssistant: React.FC<CourseAiAssistantProps> = React.memo(({
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-zinc-950" /> : <Send className="w-4 h-4 text-zinc-950" />}
           </button>
         </form>
-        <div className="flex items-center justify-between text-[11px] text-zinc-400 px-2">
+        <div className="flex items-center justify-between text-[11px] text-[var(--ink-dim)] px-2">
           <span>Press Enter to send</span>
           <span className="hidden sm:inline">VS Code / PyCharm syntax theme • Python sandbox</span>
         </div>
