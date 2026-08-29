@@ -688,9 +688,20 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             aiRecommendation: aiRecommendation || currentGoal?.aiRecommendation,
             updatedAt: now };
 
+          let updatedSchedule = c.studySchedule;
+          if (updatedSchedule) {
+            updatedSchedule = {
+              ...updatedSchedule,
+              dailyGoalMinutes: quotaMins,
+              updatedAt: now
+            };
+            updatedGoal.schedule = updatedSchedule;
+          }
+
           const updatedCourse: Course = {
             ...c,
             studyGoal: updatedGoal,
+            ...(updatedSchedule && { studySchedule: updatedSchedule }),
             updatedAt: now };
 
           // Save to Firestore if signed in
@@ -718,20 +729,27 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (c.id === courseId) {
           const currentGoal = c.studyGoal;
           const initialStartDate = currentGoal?.initialStartDate || getISODateOnly(new Date());
+          
+          let initialTargetDeadline = currentGoal?.initialTargetDeadline;
+          let initialTotalDays = currentGoal?.initialTotalDays;
 
-          const deadlineCalc = computeInitialTargetDeadline(
-            initialStartDate,
-            c.totalDurationSeconds || 3600,
-            dailyMins,
-            schedule
-          );
+          if (!initialTargetDeadline) {
+            const deadlineCalc = computeInitialTargetDeadline(
+              initialStartDate,
+              c.totalDurationSeconds || 3600,
+              dailyMins,
+              schedule
+            );
+            initialTargetDeadline = deadlineCalc.targetDateStr;
+            initialTotalDays = deadlineCalc.totalDays;
+          }
 
           const updatedGoal: CourseStudyGoal = {
             dailyQuotaMinutes: dailyMins,
             dailyQuotaHours: Math.round((dailyMins / 60) * 10) / 10,
             initialStartDate,
-            initialTargetDeadline: deadlineCalc.targetDateStr,
-            initialTotalDays: deadlineCalc.totalDays,
+            initialTargetDeadline: initialTargetDeadline!,
+            initialTotalDays: initialTotalDays!,
             schedule,
             aiRecommendation: currentGoal?.aiRecommendation,
             updatedAt: now };

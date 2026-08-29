@@ -16,7 +16,7 @@ interface CommitmentModalProps {
 
 export const CommitmentModal: React.FC<CommitmentModalProps> = ({ isOpen, onClose, existingCommitment }) => {
   const { createCommitment, updateCommitment, commitments } = useCommitments();
-  const { courses, cachedVideos, updateCourseStartDate } = useLearnTrack();
+  const { courses, cachedVideos, updateCourseStartDate, updateCourseStudyGoal } = useLearnTrack();
   const progressMap = React.useSyncExternalStore(progressStore.subscribe, progressStore.getSnapshot);
   
   const [courseId, setCourseId] = useState('');
@@ -92,6 +92,13 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({ isOpen, onClos
     if (courseId) {
       // Fire and forget so we don't block
       updateCourseStartDate(courseId, newDate).catch(console.error);
+    }
+  };
+
+  const handleDailyGoalChange = async (newMinutes: number) => {
+    if (courseId) {
+      // Fire and forget so we don't block
+      updateCourseStudyGoal(courseId, newMinutes).catch(console.error);
     }
   };
 
@@ -214,17 +221,38 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({ isOpen, onClos
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[var(--ink-dim)] flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5" /> Daily Goal
+            </label>
+            <select
+              value={dailyGoalMinutes}
+              onChange={e => handleDailyGoalChange(Number(e.target.value))}
+              disabled={!courseId}
+              className="w-full bg-[var(--surface-high)] border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] disabled:opacity-50"
+            >
+              <option value={15}>15 min/day</option>
+              <option value={30}>30 min/day</option>
+              <option value={45}>45 min/day</option>
+              <option value={60}>1 hr/day</option>
+              <option value={90}>1.5 hr/day</option>
+              <option value={120}>2 hr/day</option>
+              <option value={180}>3 hr/day</option>
+              <option value={240}>4 hr/day</option>
+            </select>
+          </div>
+
           <div className="bg-[var(--surface-high)] border border-[var(--border)] rounded-xl p-4 grid grid-cols-2 gap-4">
-             <div>
-               <div className="text-[10px] uppercase tracking-wider font-semibold text-[var(--ink-faint)]">Daily Goal</div>
-               <div className="text-sm font-medium text-[var(--ink)] mt-0.5">{Math.round(dailyGoalMinutes >= 60 ? dailyGoalMinutes / 60 : dailyGoalMinutes)} {dailyGoalMinutes >= 60 ? 'hr/day' : 'min/day'}</div>
-             </div>
-             
              <div>
                <div className="text-[10px] uppercase tracking-wider font-semibold text-[var(--ink-faint)]">Est. Workload</div>
                <div className="text-sm font-medium text-[var(--ink)] mt-0.5">{expectedStudyHoursFormatted}</div>
              </div>
              
+             <div>
+               <div className="text-[10px] uppercase tracking-wider font-semibold text-[var(--ink-faint)]">Est. Duration</div>
+               <div className="text-sm font-medium text-[var(--ink)] mt-0.5">{courseStats && dailyGoalMinutes > 0 ? Math.ceil((courseStats.remainingSeconds / 60) / dailyGoalMinutes) : 0} study days</div>
+             </div>
+
              <div>
                <div className="text-[10px] uppercase tracking-wider font-semibold text-[var(--ink-faint)]">Initial Target</div>
                <div className="text-sm font-medium text-[var(--ink)] mt-0.5">{pacing?.initialTargetDeadlineFormatted || 'N/A'}</div>
@@ -250,10 +278,10 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({ isOpen, onClos
             className={`w-full py-3 text-white font-semibold rounded-xl transition disabled:opacity-50 cursor-pointer flex justify-center items-center gap-2 ${created && syncStatus === 'error' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-[var(--accent)] hover:bg-[var(--accent-hover)]'}`}
           >
             {created ? (
-              syncStatus === 'syncing' ? 'Created ✅ — Syncing Tasks...' :
+              syncStatus === 'syncing' ? (existingCommitment ? 'Updated ✅ — Syncing Tasks...' : 'Created ✅ — Syncing Tasks...') :
               syncStatus === 'success' ? 'Tasks Synced ✅' :
-              syncStatus === 'error' ? 'Created ✅ — Tasks Sync Failed ⚠️' :
-              'Created ✅'
+              syncStatus === 'error' ? (existingCommitment ? 'Updated ✅ — Tasks Sync Failed ⚠️' : 'Created ✅ — Tasks Sync Failed ⚠️') :
+              (existingCommitment ? 'Updated ✅' : 'Created ✅')
             ) : isSubmitting ? (
               existingCommitment ? 'Saving...' : 'Creating...'
             ) : (

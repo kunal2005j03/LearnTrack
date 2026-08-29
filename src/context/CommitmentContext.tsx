@@ -92,7 +92,7 @@ export const CommitmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                  courseId: c.courseId,
                  date: todayStr,
                  status: 'PENDING',
-                 targetMinutes: c.dailyTargetMinutes || 60, // Fallback, normally driven by Course Schedule
+                 targetMinutes: courses.find(course => course.id === c.courseId)?.studySchedule?.dailyGoalMinutes || courses.find(course => course.id === c.courseId)?.studyGoal?.dailyQuotaMinutes || c.dailyTargetMinutes || 60, // Driven by Course Schedule
                  actualMinutes: 0
                };
                setDoc(doc(db, `users/${user.uid}/studyCommitments/${c.id}/days/${todayStr}`), newDay).catch(console.error);
@@ -183,13 +183,16 @@ export const CommitmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const startDateTime = new Date();
       startDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
+      const currentCourse = courses.find(c => c.id === commitment.courseId);
+      const targetMins = currentCourse?.studySchedule?.dailyGoalMinutes || currentCourse?.studyGoal?.dailyQuotaMinutes || 60;
+
       // Google Tasks doesn't fully support arbitrary recurring rules via simple API without Google Calendar event binding,
       // but we can set a due date for today. (Real recurring requires Calendar API, Tasks API only supports basic tasks).
       // We will create a task.
       
       const taskBody = {
         title: `Study ${courseTitle} — Daily Session`,
-        notes: `LearnTrack daily study commitment\nCourse: ${courseTitle}\nTarget: ${commitment.dailyTargetMinutes} minutes`,
+        notes: `LearnTrack daily study commitment\nCourse: ${courseTitle}\nTarget: ${targetMins} minutes`,
         due: startDateTime.toISOString()
       };
 
