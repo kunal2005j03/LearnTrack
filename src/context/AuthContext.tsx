@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInGoogle = async () => {
     setAuthError(null);
     try {
-      const { user, accessToken } = await loginWithGoogle();
+      const { user } = await loginWithGoogle();
     } catch (err: any) {
       console.error('Google Sign In error:', err);
       // Handle popup closed or blocked gracefully

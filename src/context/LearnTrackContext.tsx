@@ -62,6 +62,10 @@ interface LearnTrackContextType {
     courseId: string,
     schedule: CourseStudySchedule
   ) => Promise<void>;
+  updateCourseStartDate: (
+    courseId: string,
+    startDate: string
+  ) => Promise<void>;
   fetchAiStudyPlan: (
     course: Course,
     videoSampleTitles?: string[]
@@ -755,6 +759,56 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
+  const updateCourseStartDate = async (
+    courseId: string,
+    startDate: string
+  ) => {
+    const now = new Date().toISOString();
+    setCourses((prev) => {
+      const updatedList = prev.map((c) => {
+        if (c.id === courseId) {
+          const currentGoal = c.studyGoal;
+          const schedule = c.studySchedule;
+          const dailyMins = currentGoal?.dailyQuotaMinutes || 60;
+          const deadlineCalc = computeInitialTargetDeadline(
+            startDate,
+            c.totalDurationSeconds || 3600,
+            dailyMins,
+            schedule
+          );
+
+          const updatedGoal: CourseStudyGoal = {
+            ...currentGoal,
+            dailyQuotaMinutes: dailyMins,
+            dailyQuotaHours: Math.round((dailyMins / 60) * 10) / 10,
+            initialStartDate: startDate,
+            initialTargetDeadline: deadlineCalc.targetDateStr,
+            initialTotalDays: deadlineCalc.totalDays,
+            updatedAt: now 
+          };
+
+          const updatedCourse: Course = {
+            ...c,
+            studyGoal: updatedGoal,
+            updatedAt: now 
+          };
+
+          if (user) {
+            setDoc(doc(db, `users/${user.uid}/courses/${courseId}`), updatedCourse, { merge: true }).catch(console.warn);
+          }
+          return updatedCourse;
+        }
+        return c;
+      });
+
+      try {
+        localStorage.setItem(`${LOCAL_STORAGE_COURSES_KEY}_${userId}`, JSON.stringify(updatedList));
+      } catch {}
+
+      return updatedList;
+    });
+  };
+
   // Fetch AI Recommended Study Plan from Gemini API
   const fetchAiStudyPlan = async (
     course: Course,
@@ -1119,6 +1173,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         bookmarkedVideos,
         updateCourseStudyGoal,
         updateCourseStudySchedule,
+        updateCourseStartDate,
         fetchAiStudyPlan,
         saveProgress,
         markVideoComplete,

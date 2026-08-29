@@ -10,9 +10,10 @@ import { getLocalDateString } from '../utils/formatters';
 interface CommitmentContextType {
   commitments: StudyCommitment[];
   todayRecords: Record<string, StudyCommitmentDay>; // courseId -> record
-  createCommitment: (data: Partial<StudyCommitment>) => Promise<void>;
-  updateCommitment: (id: string, data: Partial<StudyCommitment>) => Promise<void>;
+  createCommitment: (data: Partial<StudyCommitment>) => Promise<{ commitment: StudyCommitment, syncPromise: Promise<void> | null }>;
+  updateCommitment: (id: string, data: Partial<StudyCommitment>) => Promise<{ syncPromise: Promise<void> | null }>;
   deleteCommitment: (id: string) => Promise<void>;
+  completeCommitmentByCourseId: (courseId: string) => Promise<void>;
   getMissedDays: (courseId?: string) => number;
 }
 
@@ -81,18 +82,27 @@ export const CommitmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (todayRecord) {
           setTodayRecords(prev => ({ ...prev, [c.courseId]: todayRecord! }));
         } else {
-          if (c.status === 'active' && todayStr >= c.startDate && todayStr <= c.endDate) {
-             const newDay: StudyCommitmentDay = {
-               id: todayStr,
-               commitmentId: c.id,
-               userId: user.uid,
-               courseId: c.courseId,
-               date: todayStr,
-               status: 'PENDING',
-               targetMinutes: c.dailyTargetMinutes,
-               actualMinutes: 0
-             };
-             setDoc(doc(db, `users/${user.uid}/studyCommitments/${c.id}/days/${todayStr}`), newDay).catch(console.error);
+          if (c.status === 'active' && todayStr >= c.startDate) {
+             const maxDate = c.endDate || c.initialExpectedCompletionDate;
+             if (!maxDate || todayStr <= maxDate) {
+               const newDay: StudyCommitmentDay = {
+                 id: todayStr,
+                 commitmentId: c.id,
+                 userId: user.uid,
+                 courseId: c.courseId,
+                 date: todayStr,
+                 status: 'PENDING',
+                 targetMinutes: c.dailyTargetMinutes || 60, // Fallback, normally driven by Course Schedule
+                 actualMinutes: 0
+               };
+               setDoc(doc(db, `users/${user.uid}/studyCommitments/${c.id}/days/${todayStr}`), newDay).catch(console.error);
+             } else {
+               setTodayRecords(prev => {
+                 const copy = { ...prev };
+                 delete copy[c.courseId];
+                 return copy;
+               });
+             }
           } else {
              setTodayRecords(prev => {
                const copy = { ...prev };
@@ -216,49 +226,91 @@ export const CommitmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const createCommitment = async (data: Partial<StudyCommitment>) => {
-    if (!user) return;
+  const createCommitment = async (data: Partial<StudyCommitment>): Promise<{ commitment: StudyCommitment, syncPromise: Promise<void> | null }> => {
+    if (!user) throw new Error('User not authenticated');
+    
+    // Duplicate protection
+    const existingMemory = commitmentsRef.current.find(c => c.courseId === data.courseId && c.status === 'active');
+    if (existingMemory) {
+       throw new Error('An active study commitment already exists for this course.');
+    }
+    
     const id = doc(collection(db, 'tmp')).id;
     const commitment: StudyCommitment = {
       id,
       userId: user.uid,
       courseId: data.courseId!,
       startDate: data.startDate!,
-      endDate: data.endDate!,
+      initialExpectedCompletionDate: data.initialExpectedCompletionDate,
       reminderTime: data.reminderTime!,
       timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      dailyTargetMinutes: data.dailyTargetMinutes || 30,
       status: 'active',
       createdAt: new Date().toISOString(),
       ...data,
     };
-    await setDoc(doc(db, `users/${user.uid}/studyCommitments/${id}`), commitment);
+    
+    // Optimistic UI update
+    setCommitments(prev => [...prev, commitment]);
+
+    // Firestore update (not awaited to prevent blocking UI)
+    setDoc(doc(db, `users/${user.uid}/studyCommitments/${id}`), commitment).catch(err => {
+      console.error('Failed to save commitment to Firestore:', err);
+      // Revert optimistic update on failure
+      setCommitments(prev => prev.filter(c => c.id !== id));
+    });
     
     const course = courses.find(c => c.id === data.courseId);
+    let syncPromise: Promise<void> | null = null;
     if (course) {
-       syncGoogleTask(commitment, course.title);
+       // Fire and forget, don't wait for Google Tasks here
+       syncPromise = syncGoogleTask(commitment, course.title);
     }
+    return { commitment, syncPromise };
   };
 
-  const updateCommitment = async (id: string, data: Partial<StudyCommitment>) => {
-    if (!user) return;
-    await setDoc(doc(db, `users/${user.uid}/studyCommitments/${id}`), data, { merge: true });
+  const updateCommitment = async (id: string, data: Partial<StudyCommitment>): Promise<{ syncPromise: Promise<void> | null }> => {
+    if (!user) throw new Error('User not authenticated');
     
-    const current = commitments.find(c => c.id === id);
+    // Optimistic UI update
+    setCommitments(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+    
+    setDoc(doc(db, `users/${user.uid}/studyCommitments/${id}`), data, { merge: true }).catch(err => {
+       console.error('Failed to update commitment in Firestore:', err);
+       // We don't revert here for simplicity, but real-time listener will correct it if needed
+    });
+    
+    let syncPromise: Promise<void> | null = null;
+    const current = commitmentsRef.current.find(c => c.id === id);
     if (current) {
       const updated = { ...current, ...data };
       const course = courses.find(c => c.id === updated.courseId);
-      if (course) syncGoogleTask(updated, course.title);
+      if (course) syncPromise = syncGoogleTask(updated, course.title);
     }
+    return { syncPromise };
   };
 
   const deleteCommitment = async (id: string) => {
     if (!user) return;
-    const current = commitments.find(c => c.id === id);
+    setCommitments(prev => prev.filter(c => c.id !== id));
+    const current = commitmentsRef.current.find(c => c.id === id);
     if (current) {
        syncGoogleTask(current, '', true);
     }
-    await deleteDoc(doc(db, `users/${user.uid}/studyCommitments/${id}`));
+    deleteDoc(doc(db, `users/${user.uid}/studyCommitments/${id}`)).catch(console.error);
+  };
+  
+  const completeCommitmentByCourseId = async (courseId: string) => {
+    if (!user) return;
+    const current = commitmentsRef.current.find(c => c.courseId === courseId && c.status === 'active');
+    if (!current) return;
+    
+    // Optimistic UI update
+    setCommitments(prev => prev.map(c => c.id === current.id ? { ...c, status: 'completed' } : c));
+    
+    setDoc(doc(db, `users/${user.uid}/studyCommitments/${current.id}`), { status: 'completed' }, { merge: true }).catch(console.error);
+    
+    // Cleanup Google Task
+    syncGoogleTask(current, '', true);
   };
 
   const getMissedDays = (courseId?: string) => {
@@ -274,9 +326,12 @@ export const CommitmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
        let date = new Date(c.startDate);
        const todayDate = new Date(todayStr);
        
+       const maxDate = c.endDate || c.initialExpectedCompletionDate;
+       
        // Calculate total expected past days
        let expectedPastDays = 0;
-       while (date < todayDate && getLocalDateString(date) <= c.endDate) {
+       while (date < todayDate) {
+          if (maxDate && getLocalDateString(date) > maxDate) break;
           expectedPastDays++;
           date.setDate(date.getDate() + 1);
        }
@@ -294,7 +349,7 @@ export const CommitmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   return (
-    <CommitmentContext.Provider value={{ commitments, todayRecords, createCommitment, updateCommitment, deleteCommitment, getMissedDays }}>
+    <CommitmentContext.Provider value={{ commitments, todayRecords, createCommitment, updateCommitment, deleteCommitment, completeCommitmentByCourseId, getMissedDays }}>
       {children}
     </CommitmentContext.Provider>
   );

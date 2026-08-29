@@ -38,48 +38,55 @@ export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 // Initialize Auth
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
-googleProvider.addScope('https://www.googleapis.com/auth/tasks');
-googleProvider.addScope('https://www.googleapis.com/auth/tasks.readonly');
-googleProvider.setCustomParameters({
-  prompt: 'select_account',
-});
-
-let cachedAccessToken: string | null = null;
+// Remove global tasks scope. Only basic profile/email is requested by default.
 
 // Initialize Firestore
-export const firestoreDatabaseId = (firebaseConfigJson as any).firestoreDatabaseId || '(default)';
+export const firestoreDatabaseId = (firebaseConfigJson as any).firestoreDatabaseId || "(default)";
 export const db: Firestore = getFirestore(app, firestoreDatabaseId);
 
+let cachedTasksToken: string | null = null;
+
+// Listen for auth state
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    cachedAccessToken = null;
+    cachedTasksToken = null;
   }
 });
 
-export async function loginWithGoogle(): Promise<{user: User, accessToken: string}> {
-  const result = await signInWithPopup(auth, googleProvider);
+export async function loginWithGoogle(): Promise<{user: User}> {
+  const provider = new GoogleAuthProvider();
+  const result = await signInWithPopup(auth, provider);
+  return { user: result.user };
+}
+
+export async function connectGoogleTasks(): Promise<{accessToken: string}> {
+  if (!auth.currentUser) throw new Error("Must be logged in to connect tasks");
+  const provider = new GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/tasks');
+  
+  // Use login_hint to prevent "select account" when they are already logged in
+  if (auth.currentUser.email) {
+    provider.setCustomParameters({ login_hint: auth.currentUser.email });
+  }
+
+  const result = await signInWithPopup(auth, provider);
   const credential = GoogleAuthProvider.credentialFromResult(result);
   if (credential && credential.accessToken) {
-    cachedAccessToken = credential.accessToken;
+    cachedTasksToken = credential.accessToken;
+    // We should probably save that the user has tasks enabled
   }
-  return { user: result.user, accessToken: cachedAccessToken || '' };
+  return { accessToken: cachedTasksToken || '' };
+}
+
+export async function disconnectGoogleTasks(): Promise<void> {
+  cachedTasksToken = null;
 }
 
 export async function getAccessToken(): Promise<string | null> {
-  if (cachedAccessToken) return cachedAccessToken;
+  if (cachedTasksToken) return cachedTasksToken;
   
-  if (auth.currentUser && !auth.currentUser.isAnonymous) {
-     try {
-       const result = await signInWithPopup(auth, googleProvider);
-       const credential = GoogleAuthProvider.credentialFromResult(result);
-       if (credential && credential.accessToken) {
-         cachedAccessToken = credential.accessToken;
-         return cachedAccessToken;
-       }
-     } catch (e) {
-       console.warn('Failed to refresh Google token silently', e);
-     }
-  }
+  // Do not automatically trigger a popup here if we don't have the token.
+  // The UI should handle "Connect Google Tasks".
   return null;
 }
 

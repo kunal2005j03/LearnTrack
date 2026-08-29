@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Course, CourseVideo, CourseStudySchedule } from '../types';
 import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
 import { useLearnTrack } from '../context/LearnTrackContext';
+import { useCommitments } from '../context/CommitmentContext';
 import {
   getCourseRemainingTimeStats,
   formatSeconds,
@@ -30,7 +31,9 @@ import {
   Zap,
   Info,
   CalendarDays,
-  Edit3 } from 'lucide-react';
+  Edit3,
+  Target
+} from 'lucide-react';
 
 interface StudyGoalCardProps {
   course: Course;
@@ -45,7 +48,10 @@ export const StudyGoalCard: React.FC<StudyGoalCardProps> = ({
   videos = [],
   compact = false }) => {
   const {  updateCourseStudyGoal, fetchAiStudyPlan } = useLearnTrack();
+  const { getMissedDays } = useCommitments();
   const progressMap = useProgressMap();
+
+  const missedDays = getMissedDays(course.id);
 
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showAiTips, setShowAiTips] = useState(false);
@@ -428,14 +434,14 @@ export const StudyGoalCard: React.FC<StudyGoalCardProps> = ({
           </div>
 
           {/* Live Calculation Matrix */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
             {/* Estimated Sessions Left */}
             <div className="p-3.5 rounded-2xl bg-[var(--surface-low)] border border-[var(--border)] space-y-1">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-faint)] flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-[var(--accent)]" />
                 Est. Study Sessions
               </div>
-              <div className="text-lg font-bold text-[var(--ink)]">
+              <div className="text-lg font-bold text-[var(--ink)] truncate">
                 {remainingStats.isCompleted ? '0 sessions' : `${simulatedDeadline.sessionsNeeded} sessions`}
               </div>
               <div className="text-[10px] text-[var(--ink-faint)]">
@@ -447,12 +453,12 @@ export const StudyGoalCard: React.FC<StudyGoalCardProps> = ({
             <div className="p-3.5 rounded-2xl bg-[var(--surface-low)] border border-[var(--border)] space-y-1">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-faint)] flex items-center gap-1">
                 <Clock className="w-3 h-3 text-amber-400" />
-                Projected Finish Date
+                Projected Finish
               </div>
-              <div className="text-lg font-bold text-[var(--ink)]">
+              <div className="text-lg font-bold text-[var(--ink)] truncate">
                 {remainingStats.isCompleted ? 'Done!' : simulatedDeadline.dateFormatted}
               </div>
-              <div className="text-[10px] text-[var(--ink-faint)]">
+              <div className="text-[10px] text-[var(--ink-faint)] truncate">
                 {hasCustomSchedule ? `On ${scheduleDaysLabel}` : 'Daily pacing'}
               </div>
             </div>
@@ -461,13 +467,27 @@ export const StudyGoalCard: React.FC<StudyGoalCardProps> = ({
             <div className="p-3.5 rounded-2xl bg-[var(--surface-low)] border border-[var(--border)] space-y-1">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-faint)] flex items-center gap-1">
                 <Award className="w-3 h-3 text-purple-400" />
-                Initial Target Date
+                Initial Target
               </div>
-              <div className="text-lg font-bold text-[var(--ink)]">
+              <div className="text-lg font-bold text-[var(--ink)] truncate">
                 {pacing.initialTargetDeadlineFormatted}
               </div>
               <div className="text-[10px] text-[var(--ink-faint)]">
                 Benchmark from start
+              </div>
+            </div>
+            
+            {/* Missed Study Days */}
+            <div className="p-3.5 rounded-2xl bg-[var(--surface-low)] border border-[var(--border)] space-y-1">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-faint)] flex items-center gap-1">
+                <Target className="w-3 h-3 text-red-400" />
+                Missed Days
+              </div>
+              <div className="text-lg font-bold text-[var(--ink)]">
+                {missedDays}
+              </div>
+              <div className="text-[10px] text-[var(--ink-faint)]">
+                Days fallen behind
               </div>
             </div>
           </div>

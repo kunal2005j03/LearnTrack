@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useProgressMap, useStats, useContinueLearningVideo } from '../hooks/useProgress';
+import { useCommitments } from "../context/CommitmentContext";
 import { useLearnTrack } from '../context/LearnTrackContext';
 import { YouTubePlayer } from '../components/YouTubePlayer';
 import { LiveTimeDisplay } from '../components/LiveTimeDisplay';
@@ -10,7 +11,7 @@ import { InThisVideoPanel } from '../components/InThisVideoPanel';
 import { FormattedDescription } from '../components/FormattedDescription';
 import { formatSeconds, getCourseRemainingTimeStats } from '../utils/formatters';
 import { fetchOrResolveChapters, parseYouTubeChapters, getCachedChapters, setCachedChapters } from '../utils/chapterParser';
-import { DoubtContext, CourseVideo, YouTubeChapter, YouTubePlayerState } from '../types';
+import { DoubtContext, CourseVideo, YouTubeChapter, YouTubePlayerState, VideoProgress } from '../types';
 
 const CourseAiAssistant = React.lazy(() =>
   import('../components/CourseAiAssistant').then((m) => ({ default: m.CourseAiAssistant }))
@@ -49,6 +50,7 @@ import {
   Gauge , Info } from 'lucide-react';
 
 export const VideoPlayerPage: React.FC = () => {
+  const { completeCommitmentByCourseId } = useCommitments();
   const {
     activeCourseId,
     activeVideoId,
@@ -122,11 +124,12 @@ export const VideoPlayerPage: React.FC = () => {
     
     if (allCompletedNow && !courseWasCompletedRef.current) {
       courseWasCompletedRef.current = true;
+      completeCommitmentByCourseId(activeCourseId);
       setTimeout(() => {
         showCompletionNotification('course_completed', 'Course Completed 🎉');
       }, 3500); // Wait for video completed to show
     }
-  }, [activeCourseId, videos, showCompletionNotification]);
+  }, [activeCourseId, videos, showCompletionNotification, completeCommitmentByCourseId]);
 
   // Initial Check
   useEffect(() => {

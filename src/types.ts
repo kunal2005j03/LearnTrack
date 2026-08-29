@@ -240,10 +240,11 @@ export interface StudyCommitment {
   userId: string;
   courseId: string;
   startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD (legacy/optional)
+  initialExpectedCompletionDate?: string; // Historical baseline YYYY-MM-DD
   reminderTime: string; // e.g. "19:00"
   timezone: string; // e.g. "America/Los_Angeles"
-  dailyTargetMinutes: number; // e.g. 30
+  dailyTargetMinutes?: number; // e.g. 30 (legacy, now drawn from Course Schedule)
   status: CommitmentStatus;
   createdAt: string; // ISO
   pausedAt?: string; // ISO
