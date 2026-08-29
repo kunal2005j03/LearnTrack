@@ -100,6 +100,8 @@ export interface VideoProgress {
   durationSeconds: number;
   percentage: number;
   completed: boolean;
+  completionSource?: 'manual' | 'auto';
+  watchedSegments?: [number, number][]; // [startSeconds, endSeconds] pairs
   lastWatchedAt: string;
   updatedAt: string;
 }
@@ -229,5 +231,40 @@ export interface CodeExecutionResult {
   exitCode: number;
   executionTimeMs: number;
   error?: string;
+}
+
+export type CommitmentStatus = 'active' | 'paused' | 'cancelled' | 'completed';
+
+export interface StudyCommitment {
+  id: string; // The Firestore doc id
+  userId: string;
+  courseId: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  reminderTime: string; // e.g. "19:00"
+  timezone: string; // e.g. "America/Los_Angeles"
+  dailyTargetMinutes: number; // e.g. 30
+  status: CommitmentStatus;
+  createdAt: string; // ISO
+  pausedAt?: string; // ISO
+  resumedAt?: string; // ISO
+  cancelledAt?: string; // ISO
+  completedAt?: string; // ISO
+  googleTaskListId?: string;
+  googleTaskId?: string;
+}
+
+export type DailyStudyStatus = 'COMPLETED' | 'MISSED' | 'PENDING' | 'FUTURE';
+
+export interface StudyCommitmentDay {
+  id: string; // YYYY-MM-DD
+  commitmentId: string;
+  userId: string;
+  courseId: string;
+  date: string; // YYYY-MM-DD
+  status: DailyStudyStatus;
+  targetMinutes: number;
+  actualMinutes: number;
+  completedAt?: string; // ISO
 }
 

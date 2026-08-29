@@ -12,6 +12,8 @@ import { SearchModal } from './components/SearchModal';
 import { DashboardPage } from './pages/DashboardPage';
 import { Loader2 } from 'lucide-react';
 
+import { CommitmentProvider } from './context/CommitmentContext';
+
 const CoursesPage = lazy(() => import('./pages/CoursesPage').then((m) => ({ default: m.CoursesPage })));
 const CourseDetailPage = lazy(() => import('./pages/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })));
 const VideoPlayerPage = lazy(() => import('./pages/VideoPlayerPage').then((m) => ({ default: m.VideoPlayerPage })));
@@ -63,7 +65,9 @@ export default function App() {
   return (
     <AuthProvider>
       <LearnTrackProvider>
-        <MainAppContent />
+        <CommitmentProvider>
+          <MainAppContent />
+        </CommitmentProvider>
       </LearnTrackProvider>
     </AuthProvider>
   );

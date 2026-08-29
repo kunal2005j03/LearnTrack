@@ -816,11 +816,23 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     ) => {
       if (!videoId || durationSeconds <= 0 || isNaN(watchedSeconds)) return;
 
-      const pct = Math.min(100, Math.round((watchedSeconds / durationSeconds) * 1000) / 10);
       const existing = progressStore.getSnapshot()[videoId];
 
-      // Video auto-completes if >= 90% or if forceCompleted or if previously completed
-      const isCompleted = forceCompleted || (existing?.completed ?? false) || pct >= 90.0;
+      // Retrieve segments injected before calling saveProgress, or fallback to existing
+      const segments = existing?.watchedSegments || [];
+      const coverageSeconds = segments.reduce((acc: number, [s, e]: [number, number]) => acc + (e - s), 0);
+      const coveragePct = coverageSeconds / durationSeconds;
+
+      const pct = Math.min(100, Math.floor(coveragePct * 100));
+
+      // Video auto-completes if >= 80% meaningful coverage, or forceCompleted
+      const isCompleted = forceCompleted || (existing?.completed ?? false) || coveragePct >= 0.80;
+      
+      let completionSource = existing?.completionSource;
+      if (!existing?.completed && isCompleted) {
+        completionSource = forceCompleted ? 'manual' : 'auto';
+      }
+      
       const roundedWatched = Math.max(0, Math.floor(watchedSeconds));
 
       // Skip redundant write if watchedSeconds within 1 second and completion status unchanged
@@ -856,8 +868,11 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         durationSeconds: Math.floor(durationSeconds),
         percentage: pct,
         completed: isCompleted,
+        completionSource,
+        watchedSegments: segments,
         lastWatchedAt: now,
-        updatedAt: now };
+        updatedAt: now,
+      };
 
       // Optimistic local state update
       progressStore.update(videoId, progressRecord);
@@ -921,8 +936,8 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const now = new Date().toISOString();
 
       const duration = existing?.durationSeconds || video?.durationSeconds || 100;
-      const watched = completed ? duration : existing?.watchedSeconds || 0;
-      const pct = completed ? 100 : existing?.percentage || 0;
+      const watched = existing?.watchedSeconds || 0;
+      const pct = existing?.percentage || 0;
 
       const record: VideoProgress = {
         userId: curUserId,
@@ -936,8 +951,11 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         durationSeconds: duration,
         percentage: pct,
         completed,
+        completionSource: completed ? 'manual' : undefined,
+        watchedSegments: existing?.watchedSegments || [],
         lastWatchedAt: now,
-        updatedAt: now };
+        updatedAt: now,
+      };
 
       progressStore.update(videoId, record);
       try {

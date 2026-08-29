@@ -20,67 +20,6 @@ function getGoogleAuthClient(): GoogleAuth {
   return googleAuthClient;
 }
 
-/**
- * Returns authorization headers for calling a private Cloud Run service with an authenticated ID token.
- * Uses the attached Cloud Run runtime service account identity via google-auth-library.
- * Audience is the exact target Cloud Run execution service URL (e.g. EXECUTION_SERVICE_URL).
- */
-async function getCloudRunAuthHeaders(targetUrl: string): Promise<Record<string, string>> {
-  const isLocal = targetUrl.startsWith('http://localhost') || targetUrl.startsWith('http://127.0.0.1');
-  if (isLocal) {
-    return { 'Content-Type': 'application/json' };
-  }
-
-  // Audience must be the exact target Cloud Run service root URL (without trailing slash or subpaths)
-  const audience = targetUrl.trim().replace(/\/+$/, '');
-  
-  try {
-    const auth = getGoogleAuthClient();
-    const client = await auth.getIdTokenClient(audience);
-    const clientHeaders = await client.getRequestHeaders();
-    
-    const headersMap: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (clientHeaders) {
-      if (typeof (clientHeaders as any).forEach === 'function') {
-        (clientHeaders as any).forEach((value: string, key: string) => {
-          headersMap[key] = value;
-        });
-      } else if (typeof clientHeaders === 'object') {
-        for (const [k, v] of Object.entries(clientHeaders)) {
-          if (v && typeof v === 'string') {
-            headersMap[k] = v;
-          }
-        }
-      }
-    }
-
-    // Ensure Authorization header exists; if not found in clientHeaders map, attempt direct token retrieval
-    if (!headersMap['Authorization'] && !headersMap['authorization']) {
-      try {
-        let idToken: string | undefined;
-        if (typeof (client as any).fetchIdToken === 'function') {
-          idToken = await (client as any).fetchIdToken(audience);
-        } else if ((client as any).idTokenProvider && typeof (client as any).idTokenProvider.fetchIdToken === 'function') {
-          idToken = await (client as any).idTokenProvider.fetchIdToken(audience);
-        }
-        if (idToken) {
-          headersMap['Authorization'] = `Bearer ${idToken}`;
-        }
-      } catch {
-        // Fallback gracefully if direct fetch is not applicable
-      }
-    }
-
-    return headersMap;
-  } catch (err: any) {
-    console.warn(`[Execution Service Auth] Notice: Could not acquire Google ID Token for target ${audience}: ${err?.message || err}`);
-    // If running in development without a Google service account or ADC, return standard JSON headers.
-    return { 'Content-Type': 'application/json' };
-  }
-}
 
 // Lazy Gemini API Client initialization
 let aiClient: GoogleGenAI | null = null;
@@ -1125,10 +1064,7 @@ CRITICAL DIRECTIVES FOR CODE EXTRACTION:
     // In production, we require a real Cloud Run URL, not localhost
     let EXECUTION_SERVICE_URL = process.env.EXECUTION_SERVICE_URL;
     
-    // The user's env var might be incorrectly pointing to learntrack-main. Override if necessary.
-    if (!EXECUTION_SERVICE_URL || EXECUTION_SERVICE_URL.includes("learntrack-main")) {
-        EXECUTION_SERVICE_URL = "https://learntrack-execution-sandbox-gxgprgtggq-uc.a.run.app";
-    }
+    // If AI Studio uses learntrack-main as a proxy, we use it directly.
 
     if (!EXECUTION_SERVICE_URL && process.env.NODE_ENV === 'production') {
       return res.status(200).json({
@@ -1155,66 +1091,83 @@ CRITICAL DIRECTIVES FOR CODE EXTRACTION:
     console.log("[CODE-RUN] attempting sandbox request");
 
     try {
-      // Obtain Google Cloud Run IAM ID token headers for private service-to-service communication
-      const authHeaders = await getCloudRunAuthHeaders(baseUrl);
+      const auth = getGoogleAuthClient();
+      let execResponse;
       
-      const execResponse = await fetch(`${baseUrl}/run`, {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({
-          language: cleanLang,
-          code,
-          input
-        }),
-      });
+      const isLocal = baseUrl.startsWith('http://localhost') || baseUrl.startsWith('http://127.0.0.1');
+      const isMainAppProxy = baseUrl.includes("learntrack-main");
+      
+      if (isLocal || isMainAppProxy) {
+        // If local OR if we are running in AI Studio and routing through the main app (which is public)
+        const targetEndpoint = isMainAppProxy ? `${baseUrl}/api/code/run` : `${baseUrl}/run`;
+        execResponse = await fetch(targetEndpoint, {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language: cleanLang, code, input })
+        });
+      } else {
+        // Production: We are hitting the private execution sandbox directly.
+        // MUST use the exact sandbox URL as the token audience.
+        const client = await auth.getIdTokenClient(baseUrl);
+        execResponse = await client.request({
+          url: `${baseUrl}/run`,
+          method: "POST",
+          data: { language: cleanLang, code, input }
+        });
+      }
 
-      console.log(`[CODE-RUN] sandbox status = ${execResponse.status}`);
-      console.log(`[CODE-RUN] sandbox content-type = ${execResponse.headers.get('content-type')}`);
+      let status = (isLocal || isMainAppProxy) ? execResponse.status : (execResponse as any).status;
+      let contentType = (isLocal || isMainAppProxy)
+        ? execResponse.headers.get('content-type') || ''
+        : ((execResponse as any).headers && (execResponse as any).headers['content-type']) || '';
+      
+      console.log(`[CODE-RUN] sandbox status = ${status}`);
+      console.log(`[CODE-RUN] sandbox content-type = ${contentType}`);
 
-      // Handle Private Cloud Run IAM Authentication Errors (401 / 403)
-      if (execResponse.status === 401 || execResponse.status === 403) {
+      let data;
+      if (isLocal || isMainAppProxy) {
+        if (!contentType.includes('application/json')) {
+          const text = await execResponse.text();
+          data = { error: `Sandbox returned non-JSON: ${text.substring(0, 200)}` };
+        } else {
+          data = await execResponse.json();
+        }
+      } else {
+        data = (execResponse as any).data;
+      }
+      return res.json(data);
+
+    } catch (err: any) {
+      console.error(`Code execution service error: ${err.message}`);
+      
+      let status = err.response?.status;
+      let data = err.response?.data;
+      
+      if (status === 401 || status === 403) {
         return res.status(200).json({
           success: false,
           errorType: "EXECUTION_SERVICE_AUTH_REQUIRED",
           message: "Private Cloud Run execution service requires IAM authentication (roles/run.invoker).",
           stdout: "",
-          stderr: `Authentication Error (${execResponse.status}): Access denied to private Cloud Run execution sandbox. In production, ensure the LearnTrack backend service account has the 'roles/run.invoker' role on learntrack-execution-sandbox.`,
+          stderr: `Authentication Error (${status}): Access denied to private Cloud Run execution sandbox. In production, ensure the LearnTrack backend service account has the 'roles/run.invoker' role on learntrack-execution-sandbox.`,
           exitCode: 1,
           executionTimeMs: 0,
         });
       }
-
-      if (execResponse.status === 404 || !execResponse.ok) {
-        return res.status(200).json({
-          success: false,
-          errorType: "SANDBOX_UNAVAILABLE",
-          message: "Code execution service temporarily unavailable.",
-          stdout: "",
-          stderr: `Code execution service temporarily unavailable (HTTP ${execResponse.status}).`,
-          exitCode: -1,
-          executionTimeMs: 0,
-        });
-      }
-
-      const contentType = execResponse.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-         const text = await execResponse.text();
+      
+      if (status) {
+         let textError = typeof data === 'string' ? data : JSON.stringify(data);
          return res.status(200).json({
             success: false,
             errorType: "SANDBOX_UNAVAILABLE",
-            message: "Sandbox returned non-JSON.",
+            message: "Code execution service returned an error.",
             stdout: "",
-            stderr: `Sandbox returned non-JSON (HTTP ${execResponse.status}): \n\n${text.substring(0,200)}`,
+            stderr: `Sandbox error (HTTP ${status}): \n\n${(textError || '').substring(0,200)}`,
             exitCode: -1,
             executionTimeMs: 0,
          });
       }
-
-      const result = await execResponse.json();
-      return res.json(result);
-
-    } catch (err: any) {
-      console.error("Code execution service error:", err);
+      
       return res.status(200).json({
         success: false,
         errorType: "SANDBOX_UNAVAILABLE",

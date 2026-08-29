@@ -4,6 +4,8 @@ import { useLearnTrack } from '../context/LearnTrackContext';
 import { YouTubePlayer } from '../components/YouTubePlayer';
 import { LiveTimeDisplay } from '../components/LiveTimeDisplay';
 import { playerProgressStore } from '../utils/playerProgress';
+import { progressStore } from '../store/progressStore';
+import { watchedCoverageTracker } from '../utils/watchedCoverageTracker';
 import { InThisVideoPanel } from '../components/InThisVideoPanel';
 import { FormattedDescription } from '../components/FormattedDescription';
 import { formatSeconds, getCourseRemainingTimeStats } from '../utils/formatters';
@@ -13,7 +15,7 @@ import { DoubtContext, CourseVideo, YouTubeChapter, YouTubePlayerState } from '.
 const CourseAiAssistant = React.lazy(() =>
   import('../components/CourseAiAssistant').then((m) => ({ default: m.CourseAiAssistant }))
 );
-import {
+import { 
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
@@ -44,7 +46,7 @@ import {
   Code2,
   AlertCircle,
   Check,
-  Gauge } from 'lucide-react';
+  Gauge , Info } from 'lucide-react';
 
 export const VideoPlayerPage: React.FC = () => {
   const {
@@ -89,6 +91,8 @@ export const VideoPlayerPage: React.FC = () => {
   const [isFullscreenOverlayOpen, setIsFullscreenOverlayOpen] = useState<boolean>(false);
   const [fullscreenOverlayTab, setFullscreenOverlayTab] = useState<'in_this_video' | 'playlist' | 'ai_assistant'>('in_this_video');
   const [fullscreenControlsVisible, setFullscreenControlsVisible] = useState<boolean>(true);
+  const [showAutoCompletionToast, setShowAutoCompletionToast] = useState(false);
+  const toastTimerRef = useRef<any>(null);
   const fullscreenIdleTimerRef = useRef<any>(null);
   const videoStageRef = useRef<HTMLDivElement>(null);
 
@@ -466,15 +470,20 @@ export const VideoPlayerPage: React.FC = () => {
       setLiveDuration(currentVideo.durationSeconds);
     }
     const initialProg = activeVideoId ? progressMap[activeVideoId] : undefined;
+    watchedCoverageTracker.load(initialProg?.watchedSegments || []);
+    watchedCoverageTracker.setPlaybackRate(playbackSpeed);
+
     if (initialProg?.watchedSeconds) {
     } else {
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeVideoId, currentVideo?.durationSeconds]);
 
   // Progress update callback from YouTube player (~400ms)
   const handleProgress = useCallback(
     (cur: number, dur: number, pct: number) => {
       playerProgressStore.update(cur, dur, pct);
+      watchedCoverageTracker.update(cur);
       if (dur > 0 && Math.abs(dur - liveDuration) > 1) setLiveDuration(dur);
     },
     [liveDuration]
@@ -484,7 +493,22 @@ export const VideoPlayerPage: React.FC = () => {
   const handleSaveProgress = useCallback(
     (cur: number, dur: number) => {
       if (!activeCourseId || !activeVideoId) return;
-      saveProgress(activeCourseId, activeVideoId, cur, dur);
+      const existing = progressStore.getSnapshot()[activeVideoId];
+      const wasCompleted = existing?.completed;
+      
+      progressStore.update(activeVideoId, {
+        ...(existing || {}),
+        watchedSegments: watchedCoverageTracker.getSegments()
+      } as any);
+      
+      saveProgress(activeCourseId, activeVideoId, cur, dur).then(() => {
+        const updated = progressStore.getSnapshot()[activeVideoId];
+        if (!wasCompleted && updated?.completed && updated?.completionSource === 'auto') {
+          setShowAutoCompletionToast(true);
+          if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+          toastTimerRef.current = setTimeout(() => setShowAutoCompletionToast(false), 5000);
+        }
+      });
     },
     [activeCourseId, activeVideoId, saveProgress]
   );
@@ -500,7 +524,14 @@ export const VideoPlayerPage: React.FC = () => {
 
   const handlePlayerStateChange = useCallback((state: YouTubePlayerState) => {
     setPlayerStatus(state.status);
-    if (state.status === 'PLAYING') {
+    
+    if (state.status !== 'PLAYING') {
+      // Commit final progress segment before switching to paused/ended
+      watchedCoverageTracker.update(state.currentTime);
+      watchedCoverageTracker.setPlaying(false);
+      setIsPlaying(false);
+    } else {
+      watchedCoverageTracker.setPlaying(true);
       setIsPlaying(true);
       if (playerInstance && playbackSpeed !== 1 && typeof playerInstance.setPlaybackRate === 'function') {
         try {
@@ -508,14 +539,18 @@ export const VideoPlayerPage: React.FC = () => {
         } catch {}
       }
     }
-    if (state.status === 'PAUSED' || state.status === 'ENDED') setIsPlaying(false);
   }, [playerInstance, playbackSpeed]);
 
   const handlePlayerEnded = useCallback(() => {
-    if (activeCourseId && activeVideoId) {
-      markVideoComplete(activeCourseId, activeVideoId, true);
+    if (activeCourseId && activeVideoId && playerInstance && liveDuration > 0) {
+      try {
+        const cur = playerInstance.getCurrentTime() || 0;
+        watchedCoverageTracker.update(cur);
+        watchedCoverageTracker.setPlaying(false);
+        handleSaveProgress(cur, liveDuration);
+      } catch {}
     }
-  }, [activeCourseId, activeVideoId, markVideoComplete]);
+  }, [activeCourseId, activeVideoId, playerInstance, liveDuration, handleSaveProgress]);
 
   // Direct timestamp seeking with YouTube player seekTo
   const handleSeek = useCallback(
@@ -645,6 +680,7 @@ export const VideoPlayerPage: React.FC = () => {
   // Change playback speed
   const handleSetPlaybackSpeed = (speed: number) => {
     setPlaybackSpeed(speed);
+    watchedCoverageTracker.setPlaybackRate(speed);
     if (playerInstance && typeof playerInstance.setPlaybackRate === 'function') {
       try {
         playerInstance.setPlaybackRate(speed);
@@ -775,7 +811,21 @@ export const VideoPlayerPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 relative">
+      {/* Auto-Completion Toast Notification */}
+      {showAutoCompletionToast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="bg-[var(--surface-high)] border border-emerald-500/30 shadow-xl rounded-2xl px-5 py-3 flex items-center gap-3">
+            <div className="bg-emerald-500/20 p-1.5 rounded-full">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-[var(--ink)]">Video completed 🎉</p>
+              <p className="text-xs text-[var(--ink-dim)]">You've watched 80% of this video.</p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Top Header Bar: Back to course button + Quick Access switcher */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-2">
         <button
@@ -1723,18 +1773,26 @@ export const VideoPlayerPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Mark as Complete Button */}
-              <button
-                onClick={handleToggleComplete}
-                className={`min-h-[44px] px-5 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer touch-manipulation ${
-                  isCompleted
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-[var(--ink)] text-[var(--bg)] hover:-translate-y-0.5 shadow-sm'
-                }`}
-              >
-                <CheckCircle2 className={`w-3.5 h-3.5 ${isCompleted ? 'text-emerald-400' : ''}`} />
-                {isCompleted ? 'Completed' : 'Mark as Complete'}
-              </button>
+              {/* Auto-Completion Info */}
+              <div className="flex flex-col items-end gap-2">
+                <button
+                  onClick={handleToggleComplete}
+                  className={`min-h-[44px] px-5 py-2 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer touch-manipulation ${
+                    isCompleted
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-[var(--ink)] text-[var(--bg)] hover:-translate-y-0.5 shadow-sm'
+                  }`}
+                >
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${isCompleted ? 'text-emerald-400' : ''}`} />
+                  {isCompleted ? (progressMap[activeVideoId!]?.completionSource === 'manual' ? 'Marked complete manually' : 'Completed') : 'Mark as Complete'}
+                </button>
+                {!isCompleted && (
+                  <div className="text-[10px] text-[var(--ink-faint)] flex items-start gap-1 max-w-[200px] text-right mt-1">
+                    <Info className="w-3 h-3 shrink-0 mt-0.5" />
+                    <span>Watch 80% for automatic completion. Seeking ahead does not count.</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

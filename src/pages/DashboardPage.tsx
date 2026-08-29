@@ -12,6 +12,7 @@ import {
   getCourseRemainingTimeStats,
   formatEstimatedTimeRemaining,
   getLocalDateString } from '../utils/formatters';
+import { CommitmentList } from '../components/CommitmentList';
 import { getTodayStudyGoalStats } from '../utils/studyPlanner';
 import { VideoProgress } from '../types';
 import {
@@ -294,6 +295,9 @@ export const DashboardPage: React.FC = () => {
               </button>
             </section>
           )}
+          
+          {/* Daily Commitments Section */}
+          <CommitmentList />
 
           {/* Recharts Visual Progress & Completion Trend Section */}
           {courses.length > 0 && (
