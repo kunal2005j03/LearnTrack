@@ -91,8 +91,51 @@ export const VideoPlayerPage: React.FC = () => {
   const [isFullscreenOverlayOpen, setIsFullscreenOverlayOpen] = useState<boolean>(false);
   const [fullscreenOverlayTab, setFullscreenOverlayTab] = useState<'in_this_video' | 'playlist' | 'ai_assistant'>('in_this_video');
   const [fullscreenControlsVisible, setFullscreenControlsVisible] = useState<boolean>(true);
-  const [showAutoCompletionToast, setShowAutoCompletionToast] = useState(false);
-  const toastTimerRef = useRef<any>(null);
+
+  // Completion Notification State
+  type CompletionNotificationType = 'video_completed' | 'video_incomplete' | 'course_completed';
+  const [completionNotification, setCompletionNotification] = useState<{ type: CompletionNotificationType; message: string; detail?: string } | null>(null);
+  const notificationTimerRef = useRef<any>(null);
+  const courseWasCompletedRef = useRef<boolean | null>(null);
+  const autoNextInProgressRef = useRef<boolean>(false);
+
+  // Reset autoNextInProgressRef when the active video changes
+  useEffect(() => {
+    autoNextInProgressRef.current = false;
+  }, [activeVideoId]);
+
+  const showCompletionNotification = useCallback((type: CompletionNotificationType, message: string, detail?: string) => {
+    setCompletionNotification({ type, message, detail });
+    if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current);
+    notificationTimerRef.current = setTimeout(() => setCompletionNotification(null), 6000);
+  }, []);
+
+  const checkCourseCompletion = useCallback((currentProgressMap: Record<string, VideoProgress>) => {
+    if (!activeCourseId || !videos || videos.length === 0) return;
+    
+    if (courseWasCompletedRef.current === null) {
+      courseWasCompletedRef.current = videos.every((v) => currentProgressMap[v.id]?.completed);
+      return;
+    }
+    
+    const allCompletedNow = videos.every((v) => currentProgressMap[v.id]?.completed);
+    
+    if (allCompletedNow && !courseWasCompletedRef.current) {
+      courseWasCompletedRef.current = true;
+      setTimeout(() => {
+        showCompletionNotification('course_completed', 'Course Completed 🎉');
+      }, 3500); // Wait for video completed to show
+    }
+  }, [activeCourseId, videos, showCompletionNotification]);
+
+  // Initial Check
+  useEffect(() => {
+    if (videos && videos.length > 0 && activeCourseId && courseWasCompletedRef.current === null) {
+      const snap = progressStore.getSnapshot();
+      courseWasCompletedRef.current = videos.every((v) => snap[v.id]?.completed);
+    }
+  }, [videos, activeCourseId]);
+
   const fullscreenIdleTimerRef = useRef<any>(null);
   const videoStageRef = useRef<HTMLDivElement>(null);
 
@@ -491,8 +534,8 @@ export const VideoPlayerPage: React.FC = () => {
 
   // Periodic and event-driven database save handler
   const handleSaveProgress = useCallback(
-    (cur: number, dur: number) => {
-      if (!activeCourseId || !activeVideoId) return;
+    (cur: number, dur: number, isEnded?: boolean) => {
+      if (!activeCourseId || !activeVideoId) return Promise.resolve(null);
       const existing = progressStore.getSnapshot()[activeVideoId];
       const wasCompleted = existing?.completed;
       
@@ -501,16 +544,18 @@ export const VideoPlayerPage: React.FC = () => {
         watchedSegments: watchedCoverageTracker.getSegments()
       } as any);
       
-      saveProgress(activeCourseId, activeVideoId, cur, dur).then(() => {
+      return saveProgress(activeCourseId, activeVideoId, cur, dur).then(() => {
         const updated = progressStore.getSnapshot()[activeVideoId];
         if (!wasCompleted && updated?.completed && updated?.completionSource === 'auto') {
-          setShowAutoCompletionToast(true);
-          if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-          toastTimerRef.current = setTimeout(() => setShowAutoCompletionToast(false), 5000);
+          showCompletionNotification('video_completed', 'Video Completed ✅');
+          checkCourseCompletion(progressStore.getSnapshot());
+        } else if (isEnded && !updated?.completed && !wasCompleted) {
+          showCompletionNotification('video_incomplete', 'Please watch the whole video!!!');
         }
+        return updated;
       });
     },
-    [activeCourseId, activeVideoId, saveProgress]
+    [activeCourseId, activeVideoId, saveProgress, showCompletionNotification, checkCourseCompletion]
   );
 
   const handlePlayerReady = useCallback((player: any) => {
@@ -541,16 +586,30 @@ export const VideoPlayerPage: React.FC = () => {
     }
   }, [playerInstance, playbackSpeed]);
 
-  const handlePlayerEnded = useCallback(() => {
+  const handlePlayerEnded = useCallback(async () => {
     if (activeCourseId && activeVideoId && playerInstance && liveDuration > 0) {
+      if (autoNextInProgressRef.current) return;
       try {
         const cur = playerInstance.getCurrentTime() || 0;
         watchedCoverageTracker.update(cur);
         watchedCoverageTracker.setPlaying(false);
-        handleSaveProgress(cur, liveDuration);
-      } catch {}
+        
+        autoNextInProgressRef.current = true;
+        
+        const updated = await handleSaveProgress(cur, liveDuration, true);
+        
+        // Final video in playlist -> do not autoplay. 
+        // Course completion logic is handled via handleSaveProgress checking the map.
+        if (updated?.completed && nextVideo) {
+          openVideo(activeCourseId, nextVideo.id);
+        } else {
+          autoNextInProgressRef.current = false;
+        }
+      } catch {
+        autoNextInProgressRef.current = false;
+      }
     }
-  }, [activeCourseId, activeVideoId, playerInstance, liveDuration, handleSaveProgress]);
+  }, [activeCourseId, activeVideoId, playerInstance, liveDuration, handleSaveProgress, nextVideo, openVideo]);
 
   // Direct timestamp seeking with YouTube player seekTo
   const handleSeek = useCallback(
@@ -690,28 +749,39 @@ export const VideoPlayerPage: React.FC = () => {
     }
   };
 
+  const commitCurrentProgress = useCallback(() => {
+    if (activeCourseId && activeVideoId && playerProgressStore.currentTime > 0 && liveDuration > 0) {
+      const cur = playerProgressStore.currentTime;
+      watchedCoverageTracker.update(cur);
+      watchedCoverageTracker.setPlaying(false);
+      handleSaveProgress(cur, liveDuration, false);
+    }
+  }, [activeCourseId, activeVideoId, liveDuration, handleSaveProgress]);
+
   // Navigation handlers
   const handleNext = () => {
     if (nextVideo && activeCourseId) {
-      if (playerProgressStore.currentTime > 0 && liveDuration > 0) {
-        saveProgress(activeCourseId, activeVideoId!, playerProgressStore.currentTime, liveDuration);
-      }
+      commitCurrentProgress();
       openVideo(activeCourseId, nextVideo.id);
     }
   };
 
   const handlePrevious = () => {
     if (previousVideo && activeCourseId) {
-      if (playerProgressStore.currentTime > 0 && liveDuration > 0) {
-        saveProgress(activeCourseId, activeVideoId!, playerProgressStore.currentTime, liveDuration);
-      }
+      commitCurrentProgress();
       openVideo(activeCourseId, previousVideo.id);
     }
   };
 
   const handleToggleComplete = () => {
     if (activeCourseId && activeVideoId) {
-      markVideoComplete(activeCourseId, activeVideoId, !isCompleted);
+      const isCompleting = !isCompleted;
+      markVideoComplete(activeCourseId, activeVideoId, isCompleting).then(() => {
+        if (isCompleting) {
+          showCompletionNotification('video_completed', 'Video Completed ✅');
+          checkCourseCompletion(progressStore.getSnapshot());
+        }
+      });
     }
   };
 
@@ -812,27 +882,11 @@ export const VideoPlayerPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 relative">
-      {/* Auto-Completion Toast Notification */}
-      {showAutoCompletionToast && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="bg-[var(--surface-high)] border border-emerald-500/30 shadow-xl rounded-2xl px-5 py-3 flex items-center gap-3">
-            <div className="bg-emerald-500/20 p-1.5 rounded-full">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-[var(--ink)]">Video completed 🎉</p>
-              <p className="text-xs text-[var(--ink-dim)]">You've watched 80% of this video.</p>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Top Header Bar: Back to course button + Quick Access switcher */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-2">
         <button
           onClick={() => {
-            if (activeCourseId && activeVideoId && playerProgressStore.currentTime > 0 && liveDuration > 0) {
-              saveProgress(activeCourseId, activeVideoId, playerProgressStore.currentTime, liveDuration);
-            }
+            commitCurrentProgress();
             openCourse(course.id);
           }}
           className="inline-flex items-center gap-2 text-xs font-medium text-[var(--ink-dim)] hover:text-[var(--ink)] transition cursor-pointer"
@@ -941,6 +995,44 @@ export const VideoPlayerPage: React.FC = () => {
                 : 'aspect-video border border-[var(--border)] rounded-[20px] shadow-lg'
             }`}
           >
+            {/* Completion Toast Notification (Inside Stage for Fullscreen visibility) */}
+            {completionNotification && (
+              <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className={`shadow-xl rounded-2xl px-5 py-3 flex items-center gap-3 border ${
+                  completionNotification.type === 'video_completed' ? 'bg-[var(--surface-high)] border-emerald-500/30 text-[var(--ink)]' :
+                  completionNotification.type === 'course_completed' ? 'bg-[var(--ink)] text-[var(--bg)] border-emerald-500/50' :
+                  'bg-[var(--surface-high)] border-amber-500/50 text-[var(--ink)]'
+                }`}>
+                  <div className={`p-1.5 rounded-full shrink-0 ${
+                    completionNotification.type === 'video_completed' ? 'bg-emerald-500/20 text-emerald-500' :
+                    completionNotification.type === 'course_completed' ? 'bg-emerald-500 text-[var(--bg)]' :
+                    'bg-amber-500/20 text-amber-500'
+                  }`}>
+                    {completionNotification.type === 'course_completed' ? (
+                      <CheckCircle2 className="w-6 h-6" />
+                    ) : completionNotification.type === 'video_incomplete' ? (
+                      <Info className="w-5 h-5" />
+                    ) : (
+                      <CheckCircle2 className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <p className={`text-sm font-bold ${
+                      completionNotification.type === 'course_completed' ? 'text-[var(--bg)] text-base' : 'text-[var(--ink)]'
+                    }`}>
+                      {completionNotification.message}
+                    </p>
+                    {completionNotification.detail && (
+                      <p className={`text-xs ${
+                        completionNotification.type === 'course_completed' ? 'text-[var(--bg)] opacity-80' : 'text-[var(--ink-dim)]'
+                      }`}>
+                        {completionNotification.detail}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Video Player Main Viewport */}
             <div className={`flex-1 min-h-0 relative w-full h-full flex items-center justify-center overflow-hidden bg-black ${
               isFullscreen && isFullscreenOverlayOpen && (isTabletLandscape || isMobileLandscape) ? 'flex-row p-2 gap-2 sm:p-4 sm:gap-4' : 'flex-col'
@@ -1177,9 +1269,7 @@ export const VideoPlayerPage: React.FC = () => {
                                 key={`fs-pl-${vid.id}`}
                                 type="button"
                                 onClick={() => {
-                                  if (activeCourseId && playerProgressStore.currentTime > 0 && liveDuration > 0) {
-                                    saveProgress(activeCourseId, activeVideoId!, playerProgressStore.currentTime, liveDuration);
-                                  }
+                                  commitCurrentProgress();
                                   openVideo(course?.id || activeCourseId!, vid.id);
                                 }}
                                 className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center gap-2.5 cursor-pointer ${
@@ -1931,9 +2021,7 @@ export const VideoPlayerPage: React.FC = () => {
                     <button
                       key={vid.id}
                       onClick={() => {
-                        if (activeCourseId && playerProgressStore.currentTime > 0 && liveDuration > 0) {
-                          saveProgress(activeCourseId, activeVideoId!, playerProgressStore.currentTime, liveDuration);
-                        }
+                        commitCurrentProgress();
                         openVideo(course.id, vid.id);
                       }}
                       className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center gap-3 cursor-pointer ${
@@ -2181,9 +2269,7 @@ export const VideoPlayerPage: React.FC = () => {
                       <button
                         key={`mob-pl-${vid.id}`}
                         onClick={() => {
-                          if (activeCourseId && playerProgressStore.currentTime > 0 && liveDuration > 0) {
-                            saveProgress(activeCourseId, activeVideoId!, playerProgressStore.currentTime, liveDuration);
-                          }
+                          commitCurrentProgress();
                           openVideo(course.id, vid.id);
                           setShowMobileDrawer(false);
                           setDoubtContext(null);
