@@ -53,10 +53,14 @@ export function formatShortDate(dateInput: string | Date | undefined): string {
   });
 }
 
-export function getISODateOnly(d: Date = new Date()): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+export function getISODateOnly(d: Date | string | null | undefined = new Date()): string {
+  let safeD = d ? (typeof d === 'string' ? new Date(d) : d) : new Date();
+  if (isNaN(safeD.getTime())) {
+    safeD = new Date();
+  }
+  const year = safeD.getFullYear();
+  const month = String(safeD.getMonth() + 1).padStart(2, '0');
+  const day = String(safeD.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
@@ -66,9 +70,12 @@ export function addDays(baseDate: Date | string, days: number): Date {
   return d;
 }
 
-export function getDaysDifference(date1: Date | string, date2: Date | string): number {
+export function getDaysDifference(date1: Date | string | undefined | null, date2: Date | string | undefined | null): number {
+  if (!date1 || !date2) return 0;
   const d1 = typeof date1 === 'string' ? new Date(date1) : date1;
   const d2 = typeof date2 === 'string' ? new Date(date2) : date2;
+  
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return 0;
   
   // Set both to midnight UTC to compare calendar days cleanly
   const utc1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());

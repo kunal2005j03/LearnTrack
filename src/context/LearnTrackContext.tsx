@@ -685,7 +685,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             initialStartDate: initialStartDate || getISODateOnly(new Date()),
             initialTargetDeadline: initialTargetDeadline!,
             initialTotalDays: initialTotalDays || Math.max(1, Math.ceil((c.totalDurationSeconds || 3600) / 60 / quotaMins)),
-            aiRecommendation: aiRecommendation || currentGoal?.aiRecommendation,
+            ...((aiRecommendation || currentGoal?.aiRecommendation) ? { aiRecommendation: aiRecommendation || currentGoal?.aiRecommendation } : {}),
             updatedAt: now };
 
           let updatedSchedule = c.studySchedule;
@@ -751,7 +751,7 @@ export const LearnTrackProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             initialTargetDeadline: initialTargetDeadline!,
             initialTotalDays: initialTotalDays!,
             schedule,
-            aiRecommendation: currentGoal?.aiRecommendation,
+            ...(currentGoal?.aiRecommendation ? { aiRecommendation: currentGoal.aiRecommendation } : {}),
             updatedAt: now };
 
           const updatedCourse: Course = {
